@@ -1,0 +1,19 @@
+# Working Samba baseline captured from WD My Cloud Gen1.
+# Verified working from Mac/Finder on 2026-08-30.
+# Do not use this as the final private-user configuration.
+
+[global]
+   workgroup = WORKGROUP
+   server string = MyCloud Family
+   security = user
+   map to guest = Bad User
+   log level = 1
+   max log size = 1000
+
+[Family]
+   path = /data
+   browseable = yes
+   read only = no
+   guest ok = no
+   create mask = 0664
+   directory mask = 0775
