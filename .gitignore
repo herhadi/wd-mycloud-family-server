@@ -1,0 +1,34 @@
+# Credentials / secrets
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+known_hosts
+
+# Syncthing runtime/config data
+.syncthing/
+config.xml
+panic-*.log
+
+# NAS data and mounts
+/data/
+Photos/
+Documents/
+Movies/
+Shared/
+
+# Local/editor/OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Archives and disk images
+*.img
+*.iso
+*.tgz
+*.tar.gz
