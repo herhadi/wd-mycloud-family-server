@@ -1,8 +1,8 @@
-# cloudflared download issue on Debian Jessie
+# cloudflared download troubleshooting on Debian Jessie
 
 ## Verified failure
 
-On the WD My Cloud Gen1 running Debian Jessie with the legacy `wget`, downloading the GitHub release asset directly could fail after the GitHub redirect to `release-assets.githubusercontent.com`.
+On the WD My Cloud Gen1 running Debian Jessie with the legacy `wget`, an earlier version-specific GitHub release asset URL failed after redirecting to `release-assets.githubusercontent.com`.
 
 Observed sequence:
 
@@ -13,17 +13,23 @@ Observed sequence:
       -> repeated redirects/retries
       -> 20 redirections exceeded
 
-The captured log shows the redirect followed by the 403 response and eventually:
+The captured log shows the redirect followed by the 403 response and eventually `20 redirections exceeded`. The failed attempt left `/tmp/cloudflared` at 0 bytes. Copying that file to `/usr/local/bin/cloudflared` produced a zero-byte executable which returned no output.
 
-    20 redirections exceeded
+## Subsequent successful download
 
-The failed attempt also left an empty `/tmp/cloudflared` file (0 bytes). Copying that file to `/usr/local/bin/cloudflared` produced a zero-byte executable which returned no output.
+A later attempt succeeded on the same WD with:
+
+    wget -O cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm
+
+The download completed with HTTP 200 from `release-assets.githubusercontent.com` and produced a 36,288,720-byte file.
+
+Therefore, `/latest/download/...` is **not universally broken** on this hardware. The earlier failure was specific to the prior release URL/redirect state at that time.
 
 ## Rule for this hardware
 
-Do not repeatedly retry the same GitHub release URL from the old Jessie `wget` when this redirect loop occurs. First verify the downloaded file size and type before copying it anywhere.
+Do not repeatedly retry a GitHub release URL when the old Jessie `wget` enters a redirect/403 loop. Stop the attempt, then use a URL that has been observed to work or transfer the binary from a modern machine.
 
-Recommended verification:
+For every download, verify before installation:
 
     ls -lh /tmp/cloudflared
     file /tmp/cloudflared
@@ -32,12 +38,8 @@ Recommended verification:
 
 Only after the binary is verified should it be copied to `/usr/local/bin`.
 
-## Safer workaround
+## Permanent installation lesson
 
-When GitHub release redirects are unreliable from Jessie, download the known release asset from a modern machine on the same LAN and transfer it to the WD with `scp`. This avoids the legacy `wget` redirect/authentication problem.
-
-## Important operational lesson
-
-`/tmp` is not a permanent software location. A binary that has been successfully tested should be copied to `/usr/local/bin` before rebooting.
+`/tmp` is a staging area, not a permanent software location. A successfully tested binary should be copied to `/usr/local/bin` before rebooting.
 
 Do not confuse this download/redirect problem with a `cloudflared tunnel run` reconnect loop; they are separate failure modes.
