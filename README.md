@@ -1,8 +1,8 @@
 # WD My Cloud Family Server
 
-Lightweight family NAS/server setup for WD My Cloud Gen1 running Debian Jessie on ARMv7.
+Lightweight private family NAS/server for WD My Cloud Gen1 running Debian Jessie on ARMv7.
 
-## Current baseline
+## Verified baseline
 
 - Hardware: WD My Cloud Gen1
 - Architecture: ARMv7l / armhf
@@ -14,97 +14,138 @@ Lightweight family NAS/server setup for WD My Cloud Gen1 running Debian Jessie o
 - Storage: ~2.7 TB
 - Samba: 4.2.14-Debian
 - Syncthing: **v2.1.3**, static ARM binary
-- Network: DHCP on `eth0`
+- WebDAV: **v5.15.0**, static ARM binary
+- WebDAV listener: `0.0.0.0:6065`
+- Public WebDAV hostname: `drive.tripleatech.my.id`
+- Cloudflare Tunnel: `cloudflared-mycloud.service`
 
-## What is implemented
+## Verified services
 
-- SMB access from Finder/Windows Explorer.
-- Syncthing-Fork phone photo backup.
-- Private per-user Samba shares.
-- Shared `Shared` and `Media` areas.
-- Non-destructive platform/service health checks.
-- Recovery and clean-Jessie documentation for the Gen1 boot layout.
-- Safe cloudflared download/recovery notes for old Jessie `wget`.
+### Samba
 
-## Family share layout
+Samba provides local SMB access from macOS Finder and Windows Explorer.
+
+Family storage layout:
 
 ```text
 /data/
-├── Media/                 # family media; group-accessible
-├── Shared/                # family documents/files; group-accessible
-├── Photos/
-│   └── HP-Ayah/           # existing Syncthing photo dataset
+├── Family/
+│   ├── Documents/
+│   ├── Photos/
+│   │   ├── Abi/
+│   │   ├── Umi/
+│   │   ├── Adzra/
+│   │   ├── Adel/
+│   │   └── Afzal/
+│   ├── Shared/
+│   └── Videos/
 └── Private/
-    ├── <user-a>/          # 0700, user-owned
-    ├── <user-b>/
-    └── ...
+    ├── Abi/
+    ├── Umi/
+    ├── Adzra/
+    ├── Adel/
+    └── Afzal/
 ```
 
-The installer creates the `Private/<user>` directories plus the `Shared` and `Media` directories and generates a complete Samba configuration with:
+The older `Ayah` and `Ibu` names have been replaced by `Abi` and `Umi`.
 
-- `Private-<user>`: only the matching SMB user can access it.
-- `Shared`: members of the `family` Unix group can read/write.
-- `Media`: members of the `family` Unix group can read/write.
+### Syncthing
 
-## Installation on the WD
-
-After confirming `/data` is mounted and Samba is already installed:
-
-```bash
-chmod +x /path/to/install-samba-family.sh
-/path/to/install-samba-family.sh --user ayah --user ibu --user anak
-```
-
-Set SMB passwords separately:
-
-```bash
-smbpasswd ayah
-smbpasswd ibu
-smbpasswd anak
-```
-
-Run the non-destructive health check afterwards:
-
-```bash
-chmod +x /path/to/health-check.sh
-/path/to/health-check.sh
-```
-
-The Samba installer backs up the current `/etc/samba/smb.conf`, validates the generated configuration with `testparm`, and only then restarts Samba. It never formats disks or edits `/etc/fstab`.
-
-## Current Syncthing deployment
-
-The verified WD deployment runs Syncthing v2.1.3 from `/usr/local/bin/syncthing` as user `syncthing`, with state in `/var/lib/syncthing`. The previously used extracted directory name `syncthing-linux-arm-v1.19.2` was misleading; the binary itself reports v2.1.3.
-
-The current verified phone folder is:
+Verified deployment:
 
 ```text
-/data/Photos/HP-Ayah
+Binary : /usr/local/bin/syncthing
+User   : syncthing
+State  : /var/lib/syncthing
+Folder : Poco F7
+Path   : /data/Family/Photos/Abi
 ```
 
-See `docs/deployment/syncthing-verified.md` for the recorded verification.
+The binary was independently verified as Syncthing v2.1.3; an older extracted directory name containing `v1.19.2` was misleading.
 
-## Remote access
+### WebDAV
 
-SMB/TCP 445 must not be exposed directly to the public Internet. Remote access should be provided through a secure tunnel or VPN. The repository includes troubleshooting notes for the legacy Jessie `wget` behavior encountered when downloading cloudflared.
+Verified deployment:
+
+```text
+Binary : /usr/local/bin/webdav
+Version: 5.15.0
+Config : /etc/webdav/config.yml
+Port   : 6065
+Service: webdav.service
+```
+
+WebDAV users are exposed through isolated virtual roots containing only:
+
+```text
+Private
+Family
+```
+
+Current login-to-directory mapping:
+
+```text
+abi   -> /opt/webdav/abi
+umi   -> /opt/webdav/umi
+anak1 -> /opt/webdav/adzra
+anak2 -> /opt/webdav/adel
+anak3 -> /opt/webdav/afzal
+```
+
+The virtual roots are backed by bind mounts from `/data/Private/<name>` and `/data/Family`, recorded in `/etc/fstab`.
+
+### Cloudflare Tunnel
+
+Remote WebDAV is published through:
+
+```text
+drive.tripleatech.my.id
+        |
+        v
+Cloudflare Tunnel
+        |
+        v
+127.0.0.1:6065
+        |
+        v
+WebDAV
+```
+
+The production system uses the systemd service:
+
+```text
+cloudflared-mycloud.service
+```
+
+The older `/etc/init.d/cloudflared` implementation is retained only as historical/backup material and must not be treated as the active service.
+
+SMB/TCP 445 is not exposed directly to the Internet.
+
+## Browser and Finder behavior
+
+The WebDAV endpoint must keep standard WebDAV `PROPFIND` behavior and return `207 Multi-Status` XML. A browser may therefore display raw XML for a directory request; this is normal WebDAV behavior.
+
+The next development goal is a custom WebDAV binary that adds an HTML directory/file listing for ordinary browser `GET` requests while preserving standards-compatible WebDAV behavior for Finder and other WebDAV clients.
 
 ## Recovery
 
 The repository documents both:
 
 1. Recovery of an existing Gen1 disk without intentionally formatting `/data`.
-2. A clean Debian Jessie restore using the known Gen1 GPT/RAID/kernel/config layout.
+2. Clean Debian Jessie restore using the known Gen1 GPT/RAID/kernel/config layout.
 
 The large clean-Jessie recovery archive is deliberately not committed to Git. Its recorded SHA256 and contents are documented under `installer/jessie/`.
 
-## Design principles
+## Safety principles
 
 - Keep Debian Jessie stable; do not perform accidental distribution upgrades.
-- Avoid Docker and heavyweight web applications on this 256 MB-class device.
+- Avoid Docker and heavyweight web applications on the 256 MB-class device.
 - Keep user data on `/data`.
-- Never store passwords, SSH keys, device IDs, private certificates, photos, or documents in this repository.
-- Prefer small, reversible, documented changes.
-- Treat recovery commands such as `dd`, `mkfs`, `mdadm --create`, and partitioning as destructive until the target device has been verified.
+- Never store passwords, Cloudflare credentials, SSH keys, private certificates, device IDs, photos, or documents in this repository.
+- Preserve existing configuration before replacement.
+- Treat `dd`, `mkfs`, `mdadm --create`, and partitioning as destructive until the target device has been verified.
+- Do not expose SMB/TCP 445 or the Syncthing GUI directly to the public Internet.
+- Test service changes locally before testing through Cloudflare.
 
 ## Repository layout
 
@@ -114,21 +155,22 @@ The large clean-Jessie recovery archive is deliberately not committed to Git. It
 ├── README.md
 ├── .gitignore
 ├── config/
-│   ├── samba/smb.conf.working
-│   └── syncthing/syncthing.init
+│   ├── samba/
+│   └── syncthing/
 ├── docs/
 │   ├── architecture.md
-│   ├── hardware.md
-│   ├── setup.md
 │   ├── deployment/
+│   ├── hardware.md
 │   ├── recovery/
+│   ├── setup.md
 │   └── troubleshooting/
 ├── installer/
 │   └── jessie/
 └── scripts/
     ├── health-check.sh
     ├── install-samba-family.sh
-    └── prepare.sh
+    ├── prepare.sh
+    └── shellcheck.sh
 ```
 
 ## Status
@@ -138,18 +180,29 @@ The large clean-Jessie recovery archive is deliberately not committed to Git. It
 - Debian Jessie boots on the WD Gen1 HDD.
 - SSH access works.
 - 512 MB swap is active.
-- Samba 4.2.14 is working from Mac/Finder.
-- Syncthing v2.1.3 is installed and starts at boot.
-- One Android phone has successfully synchronized photos to the NAS.
+- Samba 4.2.14 works from Mac/Finder.
+- Family/private storage layout is deployed.
+- Syncthing v2.1.3 starts at boot and backs up the Poco F7 photo dataset to `/data/Family/Photos/Abi`.
+- WebDAV v5.15.0 is active on port 6065.
+- Five WebDAV virtual roots are deployed with 10 bind mounts total.
+- Cloudflare Tunnel is active through `cloudflared-mycloud.service`.
+- `drive.tripleatech.my.id` returns `207 Multi-Status` for authenticated WebDAV `PROPFIND` requests.
+- Finder/macOS access through the public WebDAV hostname has been verified.
 
-### Remaining integration work
+### Next
 
-- Decide and document the final DLNA implementation suitable for Jessie/256 MB RAM.
-- Deploy and verify secure remote access (tunnel/VPN) without exposing SMB.
-- Add additional family Syncthing devices and map their destinations.
+- Build and test a custom WebDAV v5.15.0-based binary with HTML directory listing for browser `GET` requests.
+- Re-test WebDAV/Finder/Cloudflare after replacing the binary.
+- Remove Gossa only after the custom WebDAV browser UI is verified.
+- Select and verify a lightweight DLNA implementation suitable for Jessie and the 256 MB-class device.
+- Add and verify remaining family Syncthing devices.
 
-## Warning
+## Source of truth
 
-This repository contains configuration, scripts, and recovery documentation only. It is **not** a backup of the NAS data disk.
+After every verified workflow on the physical My Cloud:
 
-Before running any script against the WD, verify the target device, mounted filesystems, and current configuration.
+1. update the relevant repository documentation/configuration;
+2. commit it to `main`;
+3. only then start the next workflow.
+
+The repository is configuration/documentation source-of-truth, not a backup of `/data`.
