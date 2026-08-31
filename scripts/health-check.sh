@@ -32,14 +32,16 @@ check 'Samba configuration valid' sh -c 'testparm -s >/dev/null 2>&1'
 check 'Syncthing binary exists' test -x /usr/local/bin/syncthing
 check 'Syncthing service running' service syncthing status
 
-if command -v /usr/local/bin/syncthing >/dev/null 2>&1; then
-  printf 'Syncthing: %s\n' "$('/usr/local/bin/syncthing' --version 2>/dev/null || true)"
+if [ -x /usr/local/bin/syncthing ]; then
+  printf 'Syncthing: %s\n' "$(/usr/local/bin/syncthing --version 2>/dev/null || true)"
 fi
 
+echo
+printf '%s\n' '--- Storage ---'
 if mountpoint -q /data; then
-  echo
-  printf '%s\n' '--- Storage ---'
   df -h /data
+else
+  echo 'WARNING: /data is not mounted.'
 fi
 
 echo
