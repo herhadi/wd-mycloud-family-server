@@ -13,7 +13,7 @@ Verified runtime configuration:
 - Home/config directory: `/var/lib/syncthing`
 - GUI address: `0.0.0.0:8384`
 - Synced folder label: `Poco F7`
-- Synced path: `/data/Photos/HP-Ayah`
+- Synced path: `/data/Family/Photos/Abi`
 - Existing synced data: approximately 9.1 GB at verification time
 - Startup: verified after system reboot
 
@@ -34,7 +34,7 @@ System shutdown:
 
 An extracted directory was named `syncthing-linux-arm-v1.19.2`, but the binary inside was verified by `--version` and SHA256 to be Syncthing v2.1.3. The directory name must therefore not be used as evidence of the binary version.
 
-The Syncthing configuration in `/var/lib/syncthing/config.xml` retained the existing `Poco F7` folder definition, so the 9.1 GB dataset did not need to be re-created from scratch in the GUI.
+The Syncthing configuration in `/var/lib/syncthing/config.xml` retained the existing `Poco F7` folder definition. The dataset was moved from the former `/data/Photos/HP-Ayah` location to `/data/Family/Photos/Abi` as part of the final family storage layout.
 
 ## RAM observation
 
@@ -46,8 +46,6 @@ Syncthing normally binds its GUI to localhost. For this deployment the GUI was t
 
     --gui-address=0.0.0.0:8384
 
-and was accessible from the LAN at:
-
-    http://192.168.11.125:8384
+and was accessible from the LAN during verification.
 
 Do not expose this GUI directly to the public Internet without authentication and an appropriate secure access layer.
