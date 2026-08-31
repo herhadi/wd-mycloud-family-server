@@ -2,7 +2,7 @@
 
 ## Scope
 
-This repository documents and scripts a lightweight family NAS built on WD My Cloud Gen1 hardware.
+This repository documents and scripts a lightweight private family NAS built on WD My Cloud Gen1 hardware.
 
 ## Verified environment
 
@@ -14,6 +14,9 @@ This repository documents and scripts a lightweight family NAS built on WD My Cl
 - Data volume `/dev/sda4` mounted at `/data`
 - Samba 4.2.14-Debian
 - Syncthing v2.1.3 static ARM binary
+- WebDAV v5.15.0 static ARM binary
+- WebDAV listener on TCP 6065
+- Cloudflare Tunnel via `cloudflared-mycloud.service`
 
 ## Safety rules
 
@@ -41,16 +44,52 @@ Scripts must:
 
 - Samba 4.2.14-Debian
 - Syncthing v2.1.3 static ARM binary
+- WebDAV v5.15.0 static ARM binary
+- Cloudflare Tunnel via `cloudflared-mycloud.service`
 
-## Family layout
+## Family identity and storage layout
 
-The intended Samba layout is:
+The canonical family member names are:
 
-- `/data/Private/<user>` — mode 0700 and accessible only through the matching SMB account.
-- `/data/Shared` — shared read/write area for Unix group `family`.
-- `/data/Media` — shared read/write media area for Unix group `family`.
+- `Ayah`
+- `Ibu`
+- `Anak1`
+- `Anak2`
+- `Anak3`
 
-Use `scripts/install-samba-family.sh` to create the layout. Do not manually copy the working baseline over the generated configuration after installation.
+The intended storage layout is:
+
+```text
+/data/
+├── Family/
+│   ├── Documents/
+│   ├── Photos/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
+│   ├── Shared/
+│   └── Videos/
+└── Private/
+    ├── Ayah/
+    ├── Ibu/
+    ├── Anak1/
+    ├── Anak2/
+    └── Anak3/
+```
+
+The WebDAV virtual-root convention is:
+
+```text
+Ayah  -> /opt/webdav/ayah
+Ibu   -> /opt/webdav/ibu
+Anak1 -> /opt/webdav/anak1
+Anak2 -> /opt/webdav/anak2
+Anak3 -> /opt/webdav/anak3
+```
+
+Each root exposes only `Private` and `Family`. The `Private` area maps to the matching member directory; the `Family` area maps to `/data/Family`.
 
 ## Validation
 
