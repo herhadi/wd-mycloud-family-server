@@ -32,22 +32,20 @@ Family storage layout:
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Abi/
-│   │   ├── Umi/
-│   │   ├── Adzra/
-│   │   ├── Adel/
-│   │   └── Afzal/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
 │   ├── Shared/
 │   └── Videos/
 └── Private/
-    ├── Abi/
-    ├── Umi/
-    ├── Adzra/
-    ├── Adel/
-    └── Afzal/
+    ├── Ayah/
+    ├── Ibu/
+    ├── Anak1/
+    ├── Anak2/
+    └── Anak3/
 ```
-
-The older `Ayah` and `Ibu` names have been replaced by `Abi` and `Umi`.
 
 ### Syncthing
 
@@ -58,7 +56,7 @@ Binary : /usr/local/bin/syncthing
 User   : syncthing
 State  : /var/lib/syncthing
 Folder : Poco F7
-Path   : /data/Family/Photos/Abi
+Path   : /data/Family/Photos/Ayah
 ```
 
 The binary was independently verified as Syncthing v2.1.3; an older extracted directory name containing `v1.19.2` was misleading.
@@ -85,11 +83,11 @@ Family
 Current login-to-directory mapping:
 
 ```text
-abi   -> /opt/webdav/abi
-umi   -> /opt/webdav/umi
-anak1 -> /opt/webdav/adzra
-anak2 -> /opt/webdav/adel
-anak3 -> /opt/webdav/afzal
+ayah  -> /opt/webdav/ayah
+ibu   -> /opt/webdav/ibu
+anak1 -> /opt/webdav/anak1
+anak2 -> /opt/webdav/anak2
+anak3 -> /opt/webdav/anak3
 ```
 
 The virtual roots are backed by bind mounts from `/data/Private/<name>` and `/data/Family`, recorded in `/etc/fstab`.
@@ -182,7 +180,7 @@ The large clean-Jessie recovery archive is deliberately not committed to Git. It
 - 512 MB swap is active.
 - Samba 4.2.14 works from Mac/Finder.
 - Family/private storage layout is deployed.
-- Syncthing v2.1.3 starts at boot and backs up the Poco F7 photo dataset to `/data/Family/Photos/Abi`.
+- Syncthing v2.1.3 starts at boot and backs up the Poco F7 photo dataset to `/data/Family/Photos/Ayah`.
 - WebDAV v5.15.0 is active on port 6065.
 - Five WebDAV virtual roots are deployed with 10 bind mounts total.
 - Cloudflare Tunnel is active through `cloudflared-mycloud.service`.
