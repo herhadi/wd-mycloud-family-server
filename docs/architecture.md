@@ -40,19 +40,19 @@ Smart TV access via DLNA remains a separate pending service.
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Abi/
-│   │   ├── Umi/
-│   │   ├── Adzra/
-│   │   ├── Adel/
-│   │   └── Afzal/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
 │   ├── Shared/
 │   └── Videos/
 └── Private/
-    ├── Abi/
-    ├── Umi/
-    ├── Adzra/
-    ├── Adel/
-    └── Afzal/
+    ├── Ayah/
+    ├── Ibu/
+    ├── Anak1/
+    ├── Anak2/
+    └── Anak3/
 ```
 
 ## WebDAV virtual roots
@@ -60,11 +60,11 @@ Smart TV access via DLNA remains a separate pending service.
 Each WebDAV account is confined to its own virtual root containing only `Private` and `Family`:
 
 ```text
-abi   -> /opt/webdav/abi
-umi   -> /opt/webdav/umi
-anak1 -> /opt/webdav/adzra
-anak2 -> /opt/webdav/adel
-anak3 -> /opt/webdav/afzal
+Ayah  -> /opt/webdav/ayah
+Ibu   -> /opt/webdav/ibu
+Anak1 -> /opt/webdav/anak1
+Anak2 -> /opt/webdav/anak2
+Anak3 -> /opt/webdav/anak3
 ```
 
 The `Private` directory is user-specific. `Family` is shared and maps to `/data/Family`.
