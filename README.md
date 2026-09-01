@@ -114,6 +114,24 @@ The original WebDAV virtual-root implementation used bind mounts under `/opt/web
 
 The next WebDAV design must map authenticated users directly to the final `/data` storage model rather than recreating the old `/opt/webdav` virtual-root tree.
 
+### WebDAV multi-directory test checkpoint
+
+**Checkpoint: WebDAV virtual directories and path rules — verified 2026-09-01.**
+
+A temporary WebDAV instance on `127.0.0.1:6066` was tested with WebDAV v5.15.0 using `directories` and path-specific `rules` without bind mounts.
+
+Verified with a temporary `test:test` WebDAV account:
+
+- `/private/` maps to `/data/Abi`;
+- `/family/` maps to `/data/Family`;
+- Family subdirectories `Documents`, `Photos`, `Shared`, and `Videos` are visible;
+- `/family/Photos/` can be listed/read;
+- upload to `/family/Photos/` is rejected with `403 Forbidden`;
+- upload to `/family/Documents/` succeeds with `201 Created`;
+- deletion from `/family/Documents/` succeeds with `204 No Content`.
+
+This proves the required WebDAV permission model works in the test instance. The production configuration has **not** yet been enabled with this design.
+
 ### Intended WebDAV model
 
 Each authenticated user should see:
@@ -179,10 +197,11 @@ The repository documents recovery of the Gen1 platform and clean Debian Jessie r
 - Final family storage model is deployed without `/data/Private/`.
 - Syncthing v2.1.3 starts at boot and backs up phone photos into the family photo area.
 - Legacy WebDAV bind mounts and `/data/Private` development structure have been removed.
+- WebDAV v5.15.0 multi-directory mapping and path-specific read-only rules are verified in an isolated local test instance.
 
 ### Next
 
-- Build the new WebDAV mapping against the final `/data` structure.
+- Create the production WebDAV mapping for all five family users against the final `/data` structure.
 - Re-enable WebDAV v5.15.0 with the new mapping and test authenticated access locally.
 - Re-test WebDAV/Finder/Cloudflare after the new mapping is verified.
 - Build and test a custom WebDAV v5.15.0-based binary with HTML directory listing for browser `GET` requests.
