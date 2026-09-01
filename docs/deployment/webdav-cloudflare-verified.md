@@ -18,21 +18,58 @@ The binary is a static ARM executable from the `github.com/hacdias/webdav/v5` pr
 
 Production configuration must not be committed because it may contain credentials. Keep `/etc/webdav/config.yml` on the device and use placeholders in repository examples.
 
+## Real filesystem model
+
+The final storage model does **not** use `/data/Private/`.
+
+```text
+/data/
+├── Family/
+│   ├── Documents/
+│   ├── Photos/
+│   │   ├── Abi/
+│   │   ├── Umi/
+│   │   ├── Adel/
+│   │   ├── Adzra/
+│   │   └── Afzal/
+│   ├── Shared/
+│   └── Videos/
+├── Abi/
+├── Umi/
+├── Adel/
+├── Adzra/
+└── Afzal/
+```
+
+The five roots outside `Family` are private user areas. The owner has full access; other family users have no access. Newly created files/directories inside each user's root must inherit that user's ownership/permissions.
+
 ## WebDAV virtual roots
 
-Each account receives its own virtual root containing only `Private` and `Family`:
+The WebDAV view gives each account access to its own private root plus the shared `Family` tree. `Private` is a **virtual WebDAV label**, not a physical `/data/Private` directory.
 
-| Login | Virtual root | Private source | Family source |
-|---|---|---|---|
-| `abi` | `/opt/webdav/abi` | `/data/Private/Abi` | `/data/Family` |
-| `umi` | `/opt/webdav/umi` | `/data/Private/Umi` | `/data/Family` |
-| `anak1` | `/opt/webdav/adzra` | `/data/Private/Adzra` | `/data/Family` |
-| `anak2` | `/opt/webdav/adel` | `/data/Private/Adel` | `/data/Family` |
-| `anak3` | `/opt/webdav/afzal` | `/data/Private/Afzal` | `/data/Family` |
+Logical mapping:
 
-The ten backing bind mounts are recorded in `/etc/fstab` and are verified with `mount -a`.
+| Family member | Private filesystem root | Shared filesystem root |
+|---|---|---|
+| Abi | `/data/Abi` | `/data/Family` |
+| Umi | `/data/Umi` | `/data/Family` |
+| Adel | `/data/Adel` | `/data/Family` |
+| Adzra | `/data/Adzra` | `/data/Family` |
+| Afzal | `/data/Afzal` | `/data/Family` |
 
-This design prevents a WebDAV user from browsing another user's private directory while retaining access to the shared family tree.
+The production WebDAV implementation may use `/opt/webdav/<login>` bind mounts to construct the virtual view. The repository must describe the real `/data` model separately from that implementation detail.
+
+## Family/Photos permission exception
+
+`/data/Family/Photos` is intentionally different from the private roots:
+
+- family users: **read-only**;
+- Syncthing: **write** for photo backup;
+- Android photo folders: **Send Only**.
+
+This prevents an accidental deletion through a family client from deleting the source photo dataset while still allowing Syncthing to receive new photos.
+
+Other `Family` subdirectories may have different purpose-specific permissions. `Family/Shared` can be read/write for family users when configured that way.
 
 ## Cloudflare Tunnel
 
@@ -48,7 +85,7 @@ Tunnel configuration:
 /root/.cloudflared/config.yml
 ```
 
-The Cloudflare tunnel forwards the hostname to local WebDAV on TCP 6065. The tunnel ID is intentionally omitted from this document because it is not necessary to reproduce the service configuration.
+The Cloudflare tunnel forwards the hostname to local WebDAV on TCP 6065. Tunnel credentials remain on the WD and are never committed to Git.
 
 The active service is:
 
@@ -79,7 +116,7 @@ The verified public test is:
 ```bash
 curl -X PROPFIND \
   -H 'Depth: 0' \
-  -u 'abi:<WEBdav_PASSWORD>' \
+  -u '<WEBDAV_USER>:<WEBDAV_PASSWORD>' \
   https://drive.tripleatech.my.id/
 ```
 
@@ -112,7 +149,7 @@ A browser directory request may display raw WebDAV XML beginning with:
 
 This is expected. `PROPFIND` must remain a standards-compatible `207 Multi-Status` response because Finder and other WebDAV clients depend on it.
 
-The next implementation step is therefore deliberately narrow:
+The next implementation step is deliberately narrow:
 
 - ordinary browser `GET` for a directory should render an HTML file/folder listing;
 - WebDAV methods such as `PROPFIND`, `OPTIONS`, `HEAD`, and write operations must continue to behave normally.
@@ -133,7 +170,7 @@ Public endpoint:
 ```bash
 curl -i -X PROPFIND \
   -H 'Depth: 0' \
-  -u 'abi:<WEBdav_PASSWORD>' \
+  -u '<WEBDAV_USER>:<WEBDAV_PASSWORD>' \
   https://drive.tripleatech.my.id/
 ```
 
@@ -142,8 +179,8 @@ Direct LAN endpoint:
 ```bash
 curl -i -X PROPFIND \
   -H 'Depth: 0' \
-  -u 'abi:<WEBdav_PASSWORD>' \
+  -u '<WEBDAV_USER>:<WEBDAV_PASSWORD>' \
   http://<MYCLOUD_LAN_IP>:6065/
 ```
 
-Do not publish the real password, Cloudflare credentials JSON, certificates, or other secrets to Git.
+Do not publish real passwords, Cloudflare credentials JSON, certificates, or other secrets to Git.
