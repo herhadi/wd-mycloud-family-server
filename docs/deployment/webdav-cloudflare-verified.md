@@ -2,9 +2,9 @@
 
 ## Scope
 
-This document records the WebDAV and Cloudflare Tunnel state verified on the physical WD My Cloud Gen1 before custom WebDAV binary development.
+This document records the WebDAV and Cloudflare Tunnel state verified on the physical WD My Cloud Gen1.
 
-Repository documentation uses generic member labels only. Real family names and usernames are configured on the live server and must never be committed here.
+The canonical family member labels are **Ayah**, **Ibu**, **Anak1**, **Anak2**, and **Anak3**.
 
 ## WebDAV
 
@@ -18,62 +18,118 @@ Listen  : 0.0.0.0:6065
 
 The binary is a static ARM executable from the `github.com/hacdias/webdav/v5` project family.
 
-Production configuration must not be committed because it may contain credentials. Keep `/etc/webdav/config.yml` on the device and use placeholders in repository examples.
+The production configuration contains credentials and remains on the WD. Do not commit `/etc/webdav/config.yml` or real passwords to Git.
 
-## Real filesystem model
+## Final filesystem model
 
-The final storage model does **not** use `/data/Private/`.
-
-Repository examples use generic member labels only:
+The final storage model is:
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── <member-1>/
-│   │   ├── <member-2>/
-│   │   ├── <member-3>/
-│   │   ├── <member-4>/
-│   │   └── <member-5>/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
 │   ├── Shared/
 │   └── Videos/
-├── <member-1>/
-├── <member-2>/
-├── <member-3>/
-├── <member-4>/
-└── <member-5>/
+├── Ayah/
+├── Ibu/
+├── Anak1/
+├── Anak2/
+└── Anak3/
 ```
 
-The five roots outside `Family` are private user areas. The matching live-server account has full access; other family users have no access. Newly created files/directories inside each user's root must inherit that user's ownership/permissions.
+There is no `/data/Private/` directory and no `/opt/webdav/` bind-mount layer in the final implementation.
 
-## WebDAV virtual roots
+The five roots outside `Family` are private user areas. The matching account has full access; other family users have no access.
 
-The WebDAV view gives each account access to its own private root plus the shared `Family` tree. `Private` is a **virtual WebDAV label**, not a physical `/data/Private` directory.
+## WebDAV logical mapping
 
-Logical mapping in repository documentation:
+Each account receives two logical roots:
 
 ```text
-<member-1> -> /data/<member-1>
-<member-2> -> /data/<member-2>
-<member-3> -> /data/<member-3>
-<member-4> -> /data/<member-4>
-<member-5> -> /data/<member-5>
+<member>
+├── private  → /data/<member>
+└── family   → /data/Family
 ```
 
-The production WebDAV implementation may use `/opt/webdav/<login>` bind mounts to construct the virtual view. Real login-to-directory mappings remain on the live server and are intentionally excluded from this repository.
+Canonical member mappings:
 
-## Family/Photos permission exception
+```text
+Ayah   → /data/Ayah
+Ibu    → /data/Ibu
+Anak1  → /data/Anak1
+Anak2  → /data/Anak2
+Anak3  → /data/Anak3
+```
 
-`/data/Family/Photos` is intentionally different from the private roots:
+`private` is only a WebDAV logical label. It does not correspond to a physical `/data/Private` directory.
 
-- family users: **read-only**;
+## WebDAV permission model
+
+The production configuration uses a global `CRUD` permission with one path-specific read-only exception:
+
+```yaml
+permissions: CRUD
+
+rules:
+  - regex: ^/family/Photos(/.*)?$
+    permissions: R
+```
+
+Therefore:
+
+```text
+/private/              CRUD, matching member only
+/family/Documents/     CRUD
+/family/Shared/        CRUD
+/family/Videos/        CRUD
+/family/Photos/        R only
+```
+
+## Verification checkpoint
+
+**Checkpoint: WebDAV production service — verified 2026-09-01.**
+
+The configuration was tested on port `6066` before activation and then tested through `webdav.service` on port `6065`.
+
+Verified:
+
+- upload to `/family/Photos/` returns `403 Forbidden`;
+- upload to `/family/Documents/` returns `201 Created`;
+- all five private roots accept uploads for their matching account;
+- cross-user private access returns `404 Not Found`;
+- deletion from a writable Family document returns `204 No Content`;
+- `webdav.service` is `active (running)` and `enabled`;
+- port `6065` listens after reboot.
+
+## Legacy cleanup checkpoint
+
+The previous WebDAV design used ten bind mounts below `/opt/webdav` and a legacy `/data/Private` structure. These have been removed.
+
+Verified:
+
+```text
+/etc/fstab      → no /opt/webdav bind-mount entries
+/opt/webdav     → removed
+/data/Private   → removed
+```
+
+The final `/data` hierarchy is the source of truth.
+
+## Family Photos backup boundary
+
+`/data/Family/Photos` is intentionally different from the other Family directories:
+
+- family users through WebDAV/Samba: **read-only**;
 - Syncthing: **write** for photo backup;
-- Android photo folders: **Send Only**.
+- Android photo folders: **Send Only** into the corresponding member folder.
 
-This prevents an accidental deletion through a family client from deleting the source photo dataset while still allowing Syncthing to receive new photos.
-
-Other `Family` subdirectories may have different purpose-specific permissions. `Family/Shared` can be read/write for family users when configured that way.
+This prevents deletion through normal family file clients while allowing new phone photos to arrive.
 
 ## Cloudflare Tunnel
 
@@ -113,7 +169,7 @@ The older `/etc/init.d/cloudflared` implementation is retained only as backup/hi
 
 The WebDAV endpoint uses HTTP Basic Authentication at the WebDAV layer.
 
-During testing, Cloudflare Access on the public hostname returned an HTTP 302 login response to `PROPFIND`. That behavior is unsuitable for normal Finder/WebDAV interoperability, so Access was removed from this hostname.
+Cloudflare Access must not be placed in front of this hostname if it causes redirects that break standard WebDAV methods such as `PROPFIND`.
 
 The verified public test is:
 
@@ -166,6 +222,8 @@ systemctl status cloudflared-mycloud.service
 ss -lntp | grep ':6065'
 mount | grep '/opt/webdav'
 ```
+
+The final `mount` check should return no `/opt/webdav` entries.
 
 Public endpoint:
 
