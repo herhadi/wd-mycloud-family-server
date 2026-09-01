@@ -21,25 +21,25 @@ Lightweight private family NAS/server for WD My Cloud Gen1 running Debian Jessie
 
 ## Family storage layout
 
-Repository documentation uses **generic family labels only**. Real family names, usernames, and device-specific identities are configured on the live server and must not be recorded in this repository.
+Repository documentation uses **generic family role labels only**. Real family names, usernames, and device-specific identities are configured on the live server and must not be recorded in this repository.
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── <member-1>/
-│   │   ├── <member-2>/
-│   │   ├── <member-3>/
-│   │   ├── <member-4>/
-│   │   └── <member-5>/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
 │   ├── Shared/
 │   └── Videos/
-├── <member-1>/
-├── <member-2>/
-├── <member-3>/
-├── <member-4>/
-└── <member-5>/
+├── Ayah/
+├── Ibu/
+├── Anak1/
+├── Anak2/
+└── Anak3/
 ```
 
 There is **no `/data/Private/` directory** in the final storage model.
@@ -50,11 +50,11 @@ There is **no `/data/Private/` directory** in the final storage model.
 
 | Path | Owner | Other family users |
 |---|---|---|
-| `/data/<member-1>` | matching member account | no access |
-| `/data/<member-2>` | matching member account | no access |
-| `/data/<member-3>` | matching member account | no access |
-| `/data/<member-4>` | matching member account | no access |
-| `/data/<member-5>` | matching member account | no access |
+| `/data/Ayah` | matching member account | no access |
+| `/data/Ibu` | matching member account | no access |
+| `/data/Anak1` | matching member account | no access |
+| `/data/Anak2` | matching member account | no access |
+| `/data/Anak3` | matching member account | no access |
 
 Files and directories newly created inside a member's root must inherit that member's ownership/permissions according to the live-server account configuration.
 
@@ -75,7 +75,7 @@ Binary : /usr/local/bin/syncthing
 User   : syncthing
 State  : /var/lib/syncthing
 Folder : <phone-folder-label>
-Path   : /data/Family/Photos/<member-1>
+Path   : /data/Family/Photos/<member-role>
 ```
 
 The binary was independently verified as Syncthing v2.1.3.
@@ -94,7 +94,7 @@ Service: webdav.service
 
 Each WebDAV login gets a virtual root containing only the generic `Private` and `Family` labels in the WebDAV view. These are virtual labels; the underlying filesystem does not have `/data/Private/`.
 
-The live server maps each login to its corresponding `/data/<member-N>` root. Real login names and mappings are intentionally excluded from this repository.
+The live server maps each login to its corresponding `/data/<member-role>` root. Real login names and mappings are intentionally excluded from this repository.
 
 ## Cloudflare Tunnel
 
