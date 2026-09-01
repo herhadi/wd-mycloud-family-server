@@ -92,7 +92,7 @@ Port   : 6065
 Service: webdav.service
 ```
 
-Each WebDAV login gets a virtual root containing only `Private` and `Family` in the WebDAV view. These are virtual labels; the underlying filesystem does not have `/data/Private/`.
+Each WebDAV login gets a virtual root containing only the generic `Private` and `Family` labels in the WebDAV view. These are virtual labels; the underlying filesystem does not have `/data/Private/`.
 
 The live server maps each login to its corresponding `/data/<member-N>` root. Real login names and mappings are intentionally excluded from this repository.
 
