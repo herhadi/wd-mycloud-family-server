@@ -96,35 +96,37 @@ Verified from macOS/Finder after reloading Samba:
 
 The live server configuration is validated with `testparm` before activation. Credentials are never stored in the repository.
 
-## Syncthing
-
-Verified deployment:
-
-```text
-Binary : /usr/local/bin/syncthing
-User   : syncthing
-State  : /var/lib/syncthing
-Folder : <phone-folder-label>
-Path   : /data/Family/Photos/<member-role>
-```
-
-The binary was independently verified as Syncthing v2.1.3.
-
 ## WebDAV
 
-Verified deployment:
+### Current development state
+
+The original WebDAV virtual-root implementation used bind mounts under `/opt/webdav` and a legacy `/data/Private` structure. This development structure has now been removed.
+
+**Checkpoint: WebDAV legacy cleanup — verified 2026-09-01.**
+
+- WebDAV service was stopped cleanly.
+- Ten legacy bind mounts under `/opt/webdav` were unmounted.
+- The bind-mount entries were removed from `/etc/fstab`.
+- `/data/Private` was confirmed to contain no files and was removed.
+- `/opt/webdav` was confirmed to contain no independent data after the mounts were removed and was removed.
+- `/data/Family` and the private user roots under `/data` were not deleted or moved.
+- The WebDAV service is intentionally stopped while the new mapping design is developed.
+
+The next WebDAV design must map authenticated users directly to the final `/data` storage model rather than recreating the old `/opt/webdav` virtual-root tree.
+
+### Intended WebDAV model
+
+Each authenticated user should see:
 
 ```text
-Binary : /usr/local/bin/webdav
-Version: 5.15.0
-Config : /etc/webdav/config.yml
-Port   : 6065
-Service: webdav.service
+<login>
+├── Private   → that user's `/data/<role>` directory
+└── Family    → `/data/Family`
 ```
 
-Each WebDAV login gets a virtual root containing only the generic `Private` and `Family` labels in the WebDAV view. These are virtual labels; the underlying filesystem does not have `/data/Private/`.
+The names `Ayah`, `Ibu`, `Anak1`, `Anak2`, and `Anak3` are documentation labels only. Real login names and filesystem mappings are configured on the live server.
 
-The live server maps each login to its corresponding `/data/<member-role>` root. Real login names and mappings are intentionally excluded from this repository.
+`FamilyPhotos` must remain protected according to the family storage permission policy. The WebDAV implementation must not bypass the intended filesystem access controls.
 
 ## Cloudflare Tunnel
 
@@ -176,16 +178,14 @@ The repository documents recovery of the Gen1 platform and clean Debian Jessie r
 - `FamilyPhotos` is read-only through Samba while remaining writable by Syncthing.
 - Final family storage model is deployed without `/data/Private/`.
 - Syncthing v2.1.3 starts at boot and backs up phone photos into the family photo area.
-- WebDAV v5.15.0 is active on port 6065.
-- Five WebDAV virtual roots are deployed.
-- Cloudflare Tunnel is active through `cloudflared-mycloud.service`.
-- Authenticated WebDAV `PROPFIND` returns `207 Multi-Status`.
-- Finder/macOS access through the public WebDAV hostname has been verified.
+- Legacy WebDAV bind mounts and `/data/Private` development structure have been removed.
 
 ### Next
 
+- Build the new WebDAV mapping against the final `/data` structure.
+- Re-enable WebDAV v5.15.0 with the new mapping and test authenticated access locally.
+- Re-test WebDAV/Finder/Cloudflare after the new mapping is verified.
 - Build and test a custom WebDAV v5.15.0-based binary with HTML directory listing for browser `GET` requests.
-- Re-test WebDAV/Finder/Cloudflare after replacing the binary.
 - Remove Gossa only after the custom WebDAV browser UI is verified.
 - Select and verify a lightweight DLNA implementation suitable for Jessie and the 256 MB-class device.
 - Add and verify remaining family Syncthing devices.
