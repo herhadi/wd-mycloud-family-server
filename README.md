@@ -21,25 +21,25 @@ Lightweight private family NAS/server for WD My Cloud Gen1 running Debian Jessie
 
 ## Family storage layout
 
-The real deployed family names are used throughout this repository. Do not replace them with generic labels such as `Ayah`, `Ibu`, `Anak1`, `Anak2`, or `Anak3`.
+Repository documentation uses **generic family labels only**. Real family names, usernames, and device-specific identities are configured on the live server and must not be recorded in this repository.
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Abi/
-│   │   ├── Umi/
-│   │   ├── Adel/
-│   │   ├── Adzra/
-│   │   └── Afzal/
+│   │   ├── <member-1>/
+│   │   ├── <member-2>/
+│   │   ├── <member-3>/
+│   │   ├── <member-4>/
+│   │   └── <member-5>/
 │   ├── Shared/
 │   └── Videos/
-├── Abi/
-├── Umi/
-├── Adel/
-├── Adzra/
-└── Afzal/
+├── <member-1>/
+├── <member-2>/
+├── <member-3>/
+├── <member-4>/
+└── <member-5>/
 ```
 
 There is **no `/data/Private/` directory** in the final storage model.
@@ -50,21 +50,21 @@ There is **no `/data/Private/` directory** in the final storage model.
 
 | Path | Owner | Other family users |
 |---|---|---|
-| `/data/Abi` | Abi: full access | no access |
-| `/data/Umi` | Umi: full access | no access |
-| `/data/Adel` | Adel: full access | no access |
-| `/data/Adzra` | Adzra: full access | no access |
-| `/data/Afzal` | Afzal: full access | no access |
+| `/data/<member-1>` | matching member account | no access |
+| `/data/<member-2>` | matching member account | no access |
+| `/data/<member-3>` | matching member account | no access |
+| `/data/<member-4>` | matching member account | no access |
+| `/data/<member-5>` | matching member account | no access |
 
-Files and directories newly created inside a user's root must inherit that user's ownership/permissions.
+Files and directories newly created inside a member's root must inherit that member's ownership/permissions according to the live-server account configuration.
 
 `/data/Family/Photos` is a special shared area:
 
 - family users: **read-only**;
 - Syncthing: **write** for photo backup;
-- Android photo folders are configured as **Send Only** on the phone.
+- Android photo folders: **Send Only** on the phone.
 
-Other `Family` subdirectories may have their own purpose-specific permissions. For example, `Family/Shared` may be read/write for family users. Do not assume every `Family` subdirectory has the same permission policy.
+Other `Family` subdirectories may have purpose-specific permissions. Do not assume every `Family` subdirectory has the same policy.
 
 ## Syncthing
 
@@ -74,11 +74,11 @@ Verified deployment:
 Binary : /usr/local/bin/syncthing
 User   : syncthing
 State  : /var/lib/syncthing
-Folder : Poco F7
-Path   : /data/Family/Photos/Abi
+Folder : <phone-folder-label>
+Path   : /data/Family/Photos/<member-1>
 ```
 
-The binary was independently verified as Syncthing v2.1.3; an older extracted directory name containing `v1.19.2` was misleading.
+The binary was independently verified as Syncthing v2.1.3.
 
 ## WebDAV
 
@@ -92,19 +92,9 @@ Port   : 6065
 Service: webdav.service
 ```
 
-Each WebDAV login gets a virtual root containing only `Private` and `Family` in the WebDAV view. These are virtual labels: the underlying filesystem no longer has `/data/Private`.
+Each WebDAV login gets a virtual root containing only `Private` and `Family` in the WebDAV view. These are virtual labels; the underlying filesystem does not have `/data/Private/`.
 
-Current mapping:
-
-```text
-abi   -> /data/Abi
-umi   -> /data/Umi
-adel  -> /data/Adel
-adzra  -> /data/Adzra
-afzal  -> /data/Afzal
-```
-
-The implementation may expose these through `/opt/webdav/<login>` bind mounts on the device. The exact production mount/configuration must remain documented separately from this logical storage model.
+The live server maps each login to its corresponding `/data/<member-N>` root. Real login names and mappings are intentionally excluded from this repository.
 
 ## Cloudflare Tunnel
 
@@ -133,12 +123,12 @@ The next development goal is a custom WebDAV binary that adds an HTML directory/
 
 ## Recovery and safety
 
-The repository documents recovery of the Gen1 platform and clean Debian Jessie restoration. Recovery artifacts are not committed.
+The repository documents recovery of the Gen1 platform and clean Debian Jessie restoration. Device-specific identities and credentials are intentionally excluded.
 
 - Keep Debian Jessie stable; do not perform accidental distribution upgrades.
 - Avoid Docker and heavyweight applications on the 256 MB-class device.
 - Keep user data on `/data`.
-- Never store passwords, Cloudflare credentials, SSH keys, private certificates, device IDs, photos, or documents in this repository.
+- Never store passwords, Cloudflare credentials, SSH keys, private certificates, device IDs, real family names, photos, or documents in this repository.
 - Preserve existing configuration before replacement.
 - Treat `dd`, `mkfs`, `mdadm --create`, and partitioning as destructive until the target device has been verified.
 - Do not expose SMB/TCP 445 or the Syncthing GUI directly to the public Internet.
@@ -152,8 +142,8 @@ The repository documents recovery of the Gen1 platform and clean Debian Jessie r
 - SSH access works.
 - 512 MB swap is active.
 - Samba 4.2.14 works from Mac/Finder.
-- Final family/private storage model is deployed without `/data/Private/`.
-- Syncthing v2.1.3 starts at boot and backs up the Poco F7 photo dataset to `/data/Family/Photos/Abi`.
+- Final family storage model is deployed without `/data/Private/`.
+- Syncthing v2.1.3 starts at boot and backs up phone photos into the family photo area.
 - WebDAV v5.15.0 is active on port 6065.
 - Five WebDAV virtual roots are deployed.
 - Cloudflare Tunnel is active through `cloudflared-mycloud.service`.
