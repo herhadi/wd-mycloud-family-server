@@ -2,13 +2,15 @@
 
 The NAS is intentionally lightweight because WD My Cloud Gen1 has limited memory.
 
+Repository documentation uses generic family labels only. Real family names, usernames, and device-specific identities are configured on the live server and must not be recorded here.
+
 ```text
 Android phones
    │
    └── Syncthing-Fork
           │
           ▼
-   /data/Family/Photos/<user>
+   /data/Family/Photos/<member-N>
 
                          ┌───────────────┐
 macOS/Windows ──────────>│ Samba         │
@@ -25,10 +27,10 @@ Browser/Finder ── HTTPS ─> drive.tripleatech.my.id
                               │
                               ▼
                       virtual user roots
-                        /opt/webdav/*
                               │
                               ▼
-                           /data/*
+                    /data/<member-N>
+                         + /data/Family
 
 Smart TV access via DLNA remains a separate pending service.
 ```
@@ -40,36 +42,45 @@ Smart TV access via DLNA remains a separate pending service.
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Ayah/
-│   │   ├── Ibu/
-│   │   ├── Anak1/
-│   │   ├── Anak2/
-│   │   └── Anak3/
+│   │   ├── <member-1>/
+│   │   ├── <member-2>/
+│   │   ├── <member-3>/
+│   │   ├── <member-4>/
+│   │   └── <member-5>/
 │   ├── Shared/
 │   └── Videos/
-└── Private/
-    ├── Ayah/
-    ├── Ibu/
-    ├── Anak1/
-    ├── Anak2/
-    └── Anak3/
+├── <member-1>/
+├── <member-2>/
+├── <member-3>/
+├── <member-4>/
+└── <member-5>/
 ```
+
+There is no `/data/Private/` directory in the final storage model.
+
+## Permission model
+
+- Each member has a private root directly below `/data/`.
+- The matching member has full read/write/delete access to that root.
+- Other family members have no access to another member's root.
+- New files and directories created inside a member root inherit the live-server member account ownership/permissions.
+- `Family/` is shared.
+- `Family/Photos/` is read-only to family users through the file-sharing/WebDAV layer, while Syncthing is allowed to write photo backups.
+- Phone photo folders use Send Only on the phone side.
 
 ## WebDAV virtual roots
 
-Each WebDAV account is confined to its own virtual root containing only `Private` and `Family`:
+Each WebDAV account is confined to its own logical root containing `Private` and `Family` views. These are virtual labels only; `Private` does not represent a physical `/data/Private/` directory.
 
 ```text
-Ayah  -> /opt/webdav/ayah
-Ibu   -> /opt/webdav/ibu
-Anak1 -> /opt/webdav/anak1
-Anak2 -> /opt/webdav/anak2
-Anak3 -> /opt/webdav/anak3
+<member-1> -> /opt/webdav/<login-1>
+<member-2> -> /opt/webdav/<login-2>
+<member-3> -> /opt/webdav/<login-3>
+<member-4> -> /opt/webdav/<login-4>
+<member-5> -> /opt/webdav/<login-5>
 ```
 
-The `Private` directory is user-specific. `Family` is shared and maps to `/data/Family`.
-
-The virtual roots are implemented with bind mounts recorded in `/etc/fstab` and are mounted before the WebDAV service starts.
+The live server maps each login to its matching `/data/<member-N>` root plus `/data/Family`. Real login names are intentionally excluded from this repository.
 
 ## Service roles
 
@@ -89,4 +100,4 @@ The next WebDAV development step is to add a human-friendly HTML directory/file 
 
 Public traffic reaches only Cloudflare/Tunnel/WebDAV. SMB/TCP 445 and the Syncthing GUI remain LAN-only services.
 
-Credentials and Cloudflare tunnel credential files are never committed to this repository.
+Credentials, real family identities, and Cloudflare tunnel credential files are never committed to this repository.
