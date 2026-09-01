@@ -19,35 +19,54 @@ Lightweight private family NAS/server for WD My Cloud Gen1 running Debian Jessie
 - Public WebDAV hostname: `drive.tripleatech.my.id`
 - Cloudflare Tunnel: `cloudflared-mycloud.service`
 
-## Verified services
+## Family storage layout
 
-### Samba
-
-Samba provides local SMB access from macOS Finder and Windows Explorer.
-
-Family storage layout:
+The real deployed family names are used throughout this repository. Do not replace them with generic labels such as `Ayah`, `Ibu`, `Anak1`, `Anak2`, or `Anak3`.
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Ayah/
-│   │   ├── Ibu/
-│   │   ├── Anak1/
-│   │   ├── Anak2/
-│   │   └── Anak3/
+│   │   ├── Abi/
+│   │   ├── Umi/
+│   │   ├── Adel/
+│   │   ├── Adzra/
+│   │   └── Afzal/
 │   ├── Shared/
 │   └── Videos/
-└── Private/
-    ├── Ayah/
-    ├── Ibu/
-    ├── Anak1/
-    ├── Anak2/
-    └── Anak3/
+├── Abi/
+├── Umi/
+├── Adel/
+├── Adzra/
+└── Afzal/
 ```
 
-### Syncthing
+There is **no `/data/Private/` directory** in the final storage model.
+
+## Permission model
+
+`Family` is the shared family area. User roots outside `Family` are private:
+
+| Path | Owner | Other family users |
+|---|---|---|
+| `/data/Abi` | Abi: full access | no access |
+| `/data/Umi` | Umi: full access | no access |
+| `/data/Adel` | Adel: full access | no access |
+| `/data/Adzra` | Adzra: full access | no access |
+| `/data/Afzal` | Afzal: full access | no access |
+
+Files and directories newly created inside a user's root must inherit that user's ownership/permissions.
+
+`/data/Family/Photos` is a special shared area:
+
+- family users: **read-only**;
+- Syncthing: **write** for photo backup;
+- Android photo folders are configured as **Send Only** on the phone.
+
+Other `Family` subdirectories may have their own purpose-specific permissions. For example, `Family/Shared` may be read/write for family users. Do not assume every `Family` subdirectory has the same permission policy.
+
+## Syncthing
 
 Verified deployment:
 
@@ -56,12 +75,12 @@ Binary : /usr/local/bin/syncthing
 User   : syncthing
 State  : /var/lib/syncthing
 Folder : Poco F7
-Path   : /data/Family/Photos/Ayah
+Path   : /data/Family/Photos/Abi
 ```
 
 The binary was independently verified as Syncthing v2.1.3; an older extracted directory name containing `v1.19.2` was misleading.
 
-### WebDAV
+## WebDAV
 
 Verified deployment:
 
@@ -73,26 +92,21 @@ Port   : 6065
 Service: webdav.service
 ```
 
-WebDAV users are exposed through isolated virtual roots containing only:
+Each WebDAV login gets a virtual root containing only `Private` and `Family` in the WebDAV view. These are virtual labels: the underlying filesystem no longer has `/data/Private`.
+
+Current mapping:
 
 ```text
-Private
-Family
+abi   -> /data/Abi
+umi   -> /data/Umi
+adel  -> /data/Adel
+adzra  -> /data/Adzra
+afzal  -> /data/Afzal
 ```
 
-Current login-to-directory mapping:
+The implementation may expose these through `/opt/webdav/<login>` bind mounts on the device. The exact production mount/configuration must remain documented separately from this logical storage model.
 
-```text
-ayah  -> /opt/webdav/ayah
-ibu   -> /opt/webdav/ibu
-anak1 -> /opt/webdav/anak1
-anak2 -> /opt/webdav/anak2
-anak3 -> /opt/webdav/anak3
-```
-
-The virtual roots are backed by bind mounts from `/data/Private/<name>` and `/data/Family`, recorded in `/etc/fstab`.
-
-### Cloudflare Tunnel
+## Cloudflare Tunnel
 
 Remote WebDAV is published through:
 
@@ -109,15 +123,7 @@ Cloudflare Tunnel
 WebDAV
 ```
 
-The production system uses the systemd service:
-
-```text
-cloudflared-mycloud.service
-```
-
-The older `/etc/init.d/cloudflared` implementation is retained only as historical/backup material and must not be treated as the active service.
-
-SMB/TCP 445 is not exposed directly to the Internet.
+The production system uses `cloudflared-mycloud.service`. SMB/TCP 445 is not exposed directly to the Internet.
 
 ## Browser and Finder behavior
 
@@ -125,51 +131,18 @@ The WebDAV endpoint must keep standard WebDAV `PROPFIND` behavior and return `20
 
 The next development goal is a custom WebDAV binary that adds an HTML directory/file listing for ordinary browser `GET` requests while preserving standards-compatible WebDAV behavior for Finder and other WebDAV clients.
 
-## Recovery
+## Recovery and safety
 
-The repository documents both:
-
-1. Recovery of an existing Gen1 disk without intentionally formatting `/data`.
-2. Clean Debian Jessie restore using the known Gen1 GPT/RAID/kernel/config layout.
-
-The large clean-Jessie recovery archive is deliberately not committed to Git. Its recorded SHA256 and contents are documented under `installer/jessie/`.
-
-## Safety principles
+The repository documents recovery of the Gen1 platform and clean Debian Jessie restoration. Recovery artifacts are not committed.
 
 - Keep Debian Jessie stable; do not perform accidental distribution upgrades.
-- Avoid Docker and heavyweight web applications on the 256 MB-class device.
+- Avoid Docker and heavyweight applications on the 256 MB-class device.
 - Keep user data on `/data`.
 - Never store passwords, Cloudflare credentials, SSH keys, private certificates, device IDs, photos, or documents in this repository.
 - Preserve existing configuration before replacement.
 - Treat `dd`, `mkfs`, `mdadm --create`, and partitioning as destructive until the target device has been verified.
 - Do not expose SMB/TCP 445 or the Syncthing GUI directly to the public Internet.
 - Test service changes locally before testing through Cloudflare.
-
-## Repository layout
-
-```text
-.
-├── AGENTS.md
-├── README.md
-├── .gitignore
-├── config/
-│   ├── samba/
-│   └── syncthing/
-├── docs/
-│   ├── architecture.md
-│   ├── deployment/
-│   ├── hardware.md
-│   ├── recovery/
-│   ├── setup.md
-│   └── troubleshooting/
-├── installer/
-│   └── jessie/
-└── scripts/
-    ├── health-check.sh
-    ├── install-samba-family.sh
-    ├── prepare.sh
-    └── shellcheck.sh
-```
 
 ## Status
 
@@ -179,12 +152,12 @@ The large clean-Jessie recovery archive is deliberately not committed to Git. It
 - SSH access works.
 - 512 MB swap is active.
 - Samba 4.2.14 works from Mac/Finder.
-- Family/private storage layout is deployed.
-- Syncthing v2.1.3 starts at boot and backs up the Poco F7 photo dataset to `/data/Family/Photos/Ayah`.
+- Final family/private storage model is deployed without `/data/Private/`.
+- Syncthing v2.1.3 starts at boot and backs up the Poco F7 photo dataset to `/data/Family/Photos/Abi`.
 - WebDAV v5.15.0 is active on port 6065.
-- Five WebDAV virtual roots are deployed with 10 bind mounts total.
+- Five WebDAV virtual roots are deployed.
 - Cloudflare Tunnel is active through `cloudflared-mycloud.service`.
-- `drive.tripleatech.my.id` returns `207 Multi-Status` for authenticated WebDAV `PROPFIND` requests.
+- Authenticated WebDAV `PROPFIND` returns `207 Multi-Status`.
 - Finder/macOS access through the public WebDAV hostname has been verified.
 
 ### Next
