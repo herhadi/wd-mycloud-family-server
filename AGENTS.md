@@ -23,7 +23,7 @@ This repository documents and scripts a lightweight private family NAS built on 
 - Never assume `/dev/sda` is disposable.
 - Never run `mkfs`, `wipefs`, `mdadm --create`, partitioning, or destructive `dd` operations unless the task explicitly requires it and the target has been verified.
 - Do not format `/dev/sda4` during routine service setup.
-- Do not put credentials, private keys, device IDs, private certificates, photos, or documents in Git.
+- Do not put credentials, private keys, API keys, device IDs with secrets, private certificates, photos, or documents in Git.
 - Do not switch Debian Jessie sources to a newer Debian release.
 - Do not use `stable` in long-lived Jessie configuration; Jessie is legacy infrastructure and must use archived Jessie repositories when packages are required.
 - Prefer small, reversible changes with backups before configuration replacement.
@@ -48,44 +48,83 @@ Scripts must:
 - WebDAV v5.15.0 static ARM binary
 - Cloudflare Tunnel via `cloudflared-mycloud.service`
 
-## Canonical family identity and storage layout
+## Canonical family identity and live-name mapping
 
-The canonical family member labels are **Ayah**, **Ibu**, **Anak1**, **Anak2**, and **Anak3**. Use these names consistently in current repository documentation, diagrams, storage paths, and configuration templates.
+Repository documentation uses generic role labels:
 
-The final storage model is:
+```text
+Ayah  = live Abi
+Ibu   = live Umi
+Anak1 = live Adzra
+Anak2 = live Adel
+Anak3 = live Afzal
+```
+
+These are documentation aliases only. **Never rename the live accounts/directories to match the repository aliases.**
+
+The live storage model is:
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Ayah/
-│   │   ├── Ibu/
-│   │   ├── Anak1/
-│   │   ├── Anak2/
-│   │   ├── Anak3/
-│   │   └── (no other member roots)
+│   │   ├── Abi/
+│   │   ├── Umi/
+│   │   ├── Adzra/
+│   │   ├── Adel/
+│   │   └── Afzal/
 │   ├── Shared/
 │   └── Videos/
-├── Ayah/
-├── Ibu/
-├── Anak1/
-├── Anak2/
-└── Anak3/
+├── Abi/
+├── Umi/
+├── Adzra/
+├── Adel/
+└── Afzal/
 ```
 
 There is no `/data/Private/` directory in the final model.
 
 ## Permission model
 
-- Each member has a private root directly below `/data/`.
+- Each live member has a private root directly below `/data`.
 - The matching member has full read/write/delete access to that root.
 - Other family members have no access to another member's root.
 - New files and directories inside a member root must inherit the live-server member account ownership/permissions.
 - `/data/Family/Documents`, `/data/Family/Shared`, and `/data/Family/Videos` are writable by family users.
 - `/data/Family/Photos` is read-only to family users but writable by the `syncthing` service account for photo backup.
-- Android photo folders are configured as Send Only.
+- Android photo folders are configured as **Send Only**.
+- MyCloud photo-destination folders are configured as **Receive Only** after initial synchronization is verified.
 - Other Family subdirectories may have purpose-specific permissions.
+
+## Syncthing photo-backup model
+
+The intended direction is one-way:
+
+```text
+Android phone
+   │ Send Only
+   ▼
+Syncthing
+   │
+   ▼
+MyCloud /data/Family/Photos/<live-member>
+   │ Receive Only
+   ▼
+Samba/WebDAV read-only FamilyPhotos
+```
+
+Live mappings:
+
+```text
+Ayah  → /data/Family/Photos/Abi
+Ibu   → /data/Family/Photos/Umi
+Anak1 → /data/Family/Photos/Adzra
+Anak2 → /data/Family/Photos/Adel
+Anak3 → /data/Family/Photos/Afzal
+```
+
+See `docs/syncthing.md` before changing Syncthing configuration. Do not reset the global Syncthing database for a folder problem without first checking the folder path, `.stfolder`, mount state, permissions, and source-phone data.
 
 ## WebDAV logical model
 
@@ -93,18 +132,8 @@ Each WebDAV account gets access to its own private root plus the shared `Family`
 
 ```text
 <member>
-├── private  → /data/<member>
+├── private  → /data/<live-member>
 └── family   → /data/Family
-```
-
-Canonical member mappings:
-
-```text
-Ayah   → /data/Ayah
-Ibu    → /data/Ibu
-Anak1  → /data/Anak1
-Anak2  → /data/Anak2
-Anak3  → /data/Anak3
 ```
 
 `private` is a logical WebDAV label only; it does not imply a physical `/data/Private` directory.
