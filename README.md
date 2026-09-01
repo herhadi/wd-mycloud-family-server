@@ -46,7 +46,9 @@ There is **no `/data/Private/` directory** in the final storage model.
 
 ## Permission model
 
-`Family` is the shared family area. User roots outside `Family` are private:
+The family storage is separated into private user roots and purpose-specific shared Family areas.
+
+### Private user roots
 
 | Path | Owner | Other family users |
 |---|---|---|
@@ -56,15 +58,43 @@ There is **no `/data/Private/` directory** in the final storage model.
 | `/data/Anak2` | matching member account | no access |
 | `/data/Anak3` | matching member account | no access |
 
-Files and directories newly created inside a member's root must inherit that member's ownership/permissions according to the live-server account configuration.
+Private roots use filesystem permission mode `700`. Files and directories created inside a member's root are created under that member's account and ownership.
 
-`/data/Family/Photos` is a special shared area:
+### Family shares
 
-- family users: **read-only**;
+Samba exposes the Family areas as separate shares so that `Photos` can remain read-only while the other shared areas remain writable:
+
+| Share | Path | Family access |
+|---|---|---|
+| `FamilyDocs` | `/data/Family/Documents` | read/write |
+| `FamilyShared` | `/data/Family/Shared` | read/write |
+| `FamilyVideos` | `/data/Family/Videos` | read/write |
+| `FamilyPhotos` | `/data/Family/Photos` | **read-only** |
+
+`/data/Family/Photos` is a special backup area:
+
+- family users through Samba: **read-only**;
 - Syncthing: **write** for photo backup;
 - Android photo folders: **Send Only** on the phone.
 
-Other `Family` subdirectories may have purpose-specific permissions. Do not assume every `Family` subdirectory has the same policy.
+The `FamilyPhotos` read-only policy has been verified from macOS/Finder: files can be read/copied but deletion is rejected. `FamilyDocs` read/write access has also been verified by creating and deleting a test file.
+
+Other Family subdirectories may have purpose-specific permissions. Do not assume every Family subdirectory has the same policy.
+
+## Samba checkpoint
+
+**Checkpoint: Samba private/family shares — verified 2026-09-01.**
+
+Verified from macOS/Finder after reloading Samba:
+
+- private shares for individual users are visible;
+- a family account cannot open another user's private share;
+- `FamilyDocs` is read/write;
+- `FamilyPhotos` is read-only;
+- the Samba service remains active after configuration reload;
+- the final share names are `FamilyDocs`, `FamilyShared`, `FamilyVideos`, and `FamilyPhotos`.
+
+The live server configuration is validated with `testparm` before activation. Credentials are never stored in the repository.
 
 ## Syncthing
 
@@ -142,6 +172,8 @@ The repository documents recovery of the Gen1 platform and clean Debian Jessie r
 - SSH access works.
 - 512 MB swap is active.
 - Samba 4.2.14 works from Mac/Finder.
+- Private user share isolation and Family share permissions are verified from Mac/Finder.
+- `FamilyPhotos` is read-only through Samba while remaining writable by Syncthing.
 - Final family storage model is deployed without `/data/Private/`.
 - Syncthing v2.1.3 starts at boot and backs up phone photos into the family photo area.
 - WebDAV v5.15.0 is active on port 6065.
