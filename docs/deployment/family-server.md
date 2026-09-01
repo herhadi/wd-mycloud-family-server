@@ -22,34 +22,66 @@ Run the baseline checker first:
 /path/to/prepare.sh
 ```
 
-## 2. Samba family layout
+## 2. Canonical family storage layout
 
-Copy `scripts/install-samba-family.sh` to the WD and run it as root. Example:
+The final storage model is:
 
-```bash
-chmod +x install-samba-family.sh
-./install-samba-family.sh --user ayah --user ibu --user anak
+```text
+/data/
+├── Family/
+│   ├── Documents/
+│   ├── Photos/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
+│   ├── Shared/
+│   └── Videos/
+├── Ayah/
+├── Ibu/
+├── Anak1/
+├── Anak2/
+└── Anak3/
 ```
+
+There is no `/data/Private`, `/data/Shared`, or `/data/Media` layout in the final model.
+
+The five directories directly under `/data` are private member roots and must use mode `700` with matching member ownership.
+
+## 3. Samba family layout
+
+The final Samba shares are:
+
+```text
+Private-Ayah
+Private-Ibu
+Private-Anak1
+Private-Anak2
+Private-Anak3
+FamilyDocs
+FamilyShared
+FamilyVideos
+FamilyPhotos
+```
+
+The private shares are isolated to their matching member. `FamilyDocs`, `FamilyShared`, and `FamilyVideos` are read/write. `FamilyPhotos` is read-only to family Samba users.
+
+The script in `scripts/install-samba-family.sh` is a deployment aid and must be kept aligned with this final `/data` layout before being used for a fresh rebuild.
 
 Set each SMB password interactively:
 
 ```bash
 smbpasswd ayah
 smbpasswd ibu
-smbpasswd anak
+smbpasswd anak1
+smbpasswd anak2
+smbpasswd anak3
 ```
 
-The generated layout is:
+The live configuration must be validated with `testparm` before activation.
 
-```text
-/data/Private/<user>  0700, user-owned
-/data/Shared           2770, group family
-/data/Media            2770, group family
-```
-
-The script automatically backs up the old `/etc/samba/smb.conf` before replacing it and validates the new configuration with `testparm`.
-
-## 3. Syncthing
+## 4. Syncthing
 
 The verified deployment uses:
 
@@ -70,9 +102,33 @@ service syncthing restart
 
 Do not replace the verified binary with an archive merely because the archive directory name says `v1.19.2`; the repository's verified runtime binary reports **v2.1.3**.
 
-For phone backup, configure Syncthing-Fork to synchronize camera/photo data into a user-specific destination under `/data/Photos/` rather than into the Samba private directory unless that identity model has been intentionally designed.
+Phone photo backup destinations are:
 
-## 4. Health validation
+```text
+/data/Family/Photos/Ayah
+/data/Family/Photos/Ibu
+/data/Family/Photos/Anak1
+/data/Family/Photos/Anak2
+/data/Family/Photos/Anak3
+```
+
+The phone-side photo folder is configured as Send Only.
+
+## 5. WebDAV
+
+WebDAV v5.15.0 runs through `webdav.service` on TCP 6065. The service uses `/etc/webdav/config.yml` and maps each account directly to `/data` without `/opt/webdav` bind mounts.
+
+Logical view:
+
+```text
+<member>
+├── private  → /data/<member>
+└── family   → /data/Family
+```
+
+The global WebDAV permission is `CRUD`, with `/family/Photos` restricted to `R` by a path-specific rule. Private roots are isolated by the per-user directory mapping and filesystem ownership.
+
+## 6. Health validation
 
 After service changes:
 
@@ -83,7 +139,7 @@ chmod +x health-check.sh
 
 The check is non-destructive and covers platform, storage, swap, Samba, Samba configuration validity, and Syncthing.
 
-## 5. Remote access
+## 7. Remote access
 
 Do not publish TCP/445. Do not publish the Syncthing GUI directly either.
 
@@ -91,11 +147,11 @@ Remote access should terminate at a secure tunnel or VPN and enforce authenticat
 
 The cloudflared troubleshooting notes in `docs/troubleshooting/` record the legacy-Jessie `wget` redirect problem encountered during testing. A downloaded binary must be checked with `file`, `sha256sum`, and `--version` before installation.
 
-## 6. DLNA
+## 8. DLNA
 
 DLNA is intentionally not installed by this baseline yet. The device has only ~226 MB RAM, so the final DLNA daemon must be selected and verified for memory footprint, Jessie compatibility, indexing behavior, and read-only media scanning before it is promoted into the standard install path.
 
-## 7. Backup and recovery boundary
+## 9. Backup and recovery boundary
 
 The Git repository is configuration/documentation only. It does not replace a backup of `/data`.
 
