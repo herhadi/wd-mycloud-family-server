@@ -15,18 +15,18 @@ The final family storage model is:
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Abi/
-│   │   ├── Umi/
-│   │   ├── Adel/
-│   │   ├── Adzra/
-│   │   └── Afzal/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
 │   ├── Shared/
 │   └── Videos/
-├── Abi/
-├── Umi/
-├── Adel/
-├── Adzra/
-└── Afzal/
+├── Ayah/
+├── Ibu/
+├── Anak1/
+├── Anak2/
+└── Anak3/
 ```
 
 There is no `/data/Private/` directory. The five directories directly under `/data` are private roots for the corresponding family members.
@@ -41,7 +41,7 @@ The private roots are isolated:
 
 `/data/Family` is shared, with permissions determined by each subdirectory's purpose.
 
-`/data/Family/Photos` is the exception used for phone backup: family users access it read-only, while the `syncthing` service account can write new synchronized photos. Android photo folders are configured as Send Only.
+`/data/Family/Documents`, `/data/Family/Shared`, and `/data/Family/Videos` are read/write for family users. `/data/Family/Photos` is read-only for family users while the `syncthing` service account can write new synchronized photos. Android photo folders are configured as Send Only into the corresponding member folder.
 
 ## Swap
 
@@ -57,10 +57,14 @@ Do not expose SMB/TCP 445 directly to the Internet.
 
 Syncthing v2.1.3 is installed from a static Linux ARM binary because the Jessie repository does not provide a suitable package. It runs as the dedicated `syncthing` user with state under `/var/lib/syncthing`.
 
-The verified Poco F7 photo dataset is synchronized to:
+Phone photo datasets are synchronized to the corresponding member folders:
 
 ```text
-/data/Family/Photos/Abi
+/data/Family/Photos/Ayah
+/data/Family/Photos/Ibu
+/data/Family/Photos/Anak1
+/data/Family/Photos/Anak2
+/data/Family/Photos/Anak3
 ```
 
 The phone-side photo folder is configured as Send Only.
@@ -69,7 +73,27 @@ The phone-side photo folder is configured as Send Only.
 
 WebDAV v5.15.0 is installed as `/usr/local/bin/webdav` and listens on TCP 6065 through `webdav.service`.
 
-Each WebDAV account is logically presented with its own private root plus the shared `Family` tree. `Private` can be a virtual WebDAV label only; there is no physical `/data/Private/` directory.
+Each WebDAV account is logically presented with its own private root plus the shared `Family` tree:
+
+```text
+<member>
+├── private  → /data/<member>
+└── family   → /data/Family
+```
+
+The member mappings are:
+
+```text
+Ayah   → /data/Ayah
+Ibu    → /data/Ibu
+Anak1  → /data/Anak1
+Anak2  → /data/Anak2
+Anak3  → /data/Anak3
+```
+
+`private` is only a logical WebDAV label; there is no physical `/data/Private/` directory and no `/opt/webdav` bind-mount layer.
+
+The global WebDAV permission is `CRUD`, except `/family/Photos` which is `R` through a path-specific rule.
 
 The public hostname is `drive.tripleatech.my.id`, published through the Cloudflare Tunnel service `cloudflared-mycloud.service`.
 
@@ -87,4 +111,4 @@ Do not perform general distribution upgrades on this device.
 
 ## Documentation rule
 
-The names `Abi`, `Umi`, `Adel`, `Adzra`, and `Afzal` are the canonical names for this project. Do not substitute generic names such as `Ayah`, `Ibu`, `Anak1`, `Anak2`, or `Anak3` in repository documentation.
+The canonical family member labels for this project are **Ayah**, **Ibu**, **Anak1**, **Anak2**, and **Anak3**. Use these names consistently in repository documentation, diagrams, storage paths, examples, and configuration templates. Do not use the previous member names `Abi`, `Umi`, `Adzra`, `Adel`, or `Afzal` in current documentation.
