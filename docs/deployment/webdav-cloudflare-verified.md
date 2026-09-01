@@ -4,6 +4,8 @@
 
 This document records the WebDAV and Cloudflare Tunnel state verified on the physical WD My Cloud Gen1 before custom WebDAV binary development.
 
+Repository documentation uses generic member labels only. Real family names and usernames are configured on the live server and must never be committed here.
+
 ## WebDAV
 
 ```text
@@ -22,42 +24,44 @@ Production configuration must not be committed because it may contain credential
 
 The final storage model does **not** use `/data/Private/`.
 
+Repository examples use generic member labels only:
+
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Abi/
-│   │   ├── Umi/
-│   │   ├── Adel/
-│   │   ├── Adzra/
-│   │   └── Afzal/
+│   │   ├── <member-1>/
+│   │   ├── <member-2>/
+│   │   ├── <member-3>/
+│   │   ├── <member-4>/
+│   │   └── <member-5>/
 │   ├── Shared/
 │   └── Videos/
-├── Abi/
-├── Umi/
-├── Adel/
-├── Adzra/
-└── Afzal/
+├── <member-1>/
+├── <member-2>/
+├── <member-3>/
+├── <member-4>/
+└── <member-5>/
 ```
 
-The five roots outside `Family` are private user areas. The owner has full access; other family users have no access. Newly created files/directories inside each user's root must inherit that user's ownership/permissions.
+The five roots outside `Family` are private user areas. The matching live-server account has full access; other family users have no access. Newly created files/directories inside each user's root must inherit that user's ownership/permissions.
 
 ## WebDAV virtual roots
 
 The WebDAV view gives each account access to its own private root plus the shared `Family` tree. `Private` is a **virtual WebDAV label**, not a physical `/data/Private` directory.
 
-Logical mapping:
+Logical mapping in repository documentation:
 
-| Family member | Private filesystem root | Shared filesystem root |
-|---|---|---|
-| Abi | `/data/Abi` | `/data/Family` |
-| Umi | `/data/Umi` | `/data/Family` |
-| Adel | `/data/Adel` | `/data/Family` |
-| Adzra | `/data/Adzra` | `/data/Family` |
-| Afzal | `/data/Afzal` | `/data/Family` |
+```text
+<member-1> -> /data/<member-1>
+<member-2> -> /data/<member-2>
+<member-3> -> /data/<member-3>
+<member-4> -> /data/<member-4>
+<member-5> -> /data/<member-5>
+```
 
-The production WebDAV implementation may use `/opt/webdav/<login>` bind mounts to construct the virtual view. The repository must describe the real `/data` model separately from that implementation detail.
+The production WebDAV implementation may use `/opt/webdav/<login>` bind mounts to construct the virtual view. Real login-to-directory mappings remain on the live server and are intentionally excluded from this repository.
 
 ## Family/Photos permission exception
 
@@ -127,8 +131,6 @@ HTTP/2 207
 Www-Authenticate: Basic realm="Restricted"
 ```
 
-The same authenticated `PROPFIND` was also verified directly against the LAN WebDAV listener.
-
 ## Finder verification
 
 macOS Finder has been verified against:
@@ -137,7 +139,7 @@ macOS Finder has been verified against:
 https://drive.tripleatech.my.id
 ```
 
-At least two WebDAV accounts were tested successfully through the public hostname.
+Multiple WebDAV accounts were tested successfully through the public hostname.
 
 ## Browser behavior
 
@@ -183,4 +185,4 @@ curl -i -X PROPFIND \
   http://<MYCLOUD_LAN_IP>:6065/
 ```
 
-Do not publish real passwords, Cloudflare credentials JSON, certificates, or other secrets to Git.
+Do not publish real passwords, family names, Cloudflare credentials JSON, certificates, or other secrets to Git.
