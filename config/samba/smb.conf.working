@@ -1,6 +1,7 @@
-# Working Samba baseline captured from WD My Cloud Gen1.
+# Historical Samba baseline captured from WD My Cloud Gen1.
 # Verified working from Mac/Finder on 2026-08-30.
 # This file is historical and must not be used as the final private-user configuration.
+# Repository uses generic family role labels; live usernames are intentionally omitted.
 
 [global]
    workgroup = WORKGROUP
@@ -18,11 +19,11 @@
    create mask = 0664
    directory mask = 0775
 
-# Planned share naming for the private-family configuration:
+# Final share naming verified on the live server:
 # FamilyDocs
 # FamilyShared
 # FamilyVideos
 # FamilyPhotos (read-only to Samba users; Syncthing remains writable)
 #
-# Private user shares:
-# Abi, Umi, Adel, Adzra, Afzal
+# Private user shares correspond to these generic roles:
+# Ayah, Ibu, Anak1, Anak2, Anak3
