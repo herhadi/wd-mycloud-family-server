@@ -2,15 +2,32 @@
 
 The NAS is intentionally lightweight because WD My Cloud Gen1 has limited memory.
 
-The canonical family labels are **Ayah**, **Ibu**, **Anak1**, **Anak2**, and **Anak3**.
+## Naming convention
+
+Repository diagrams use generic role labels only:
+
+```text
+Ayah  = live Abi
+Ibu   = live Umi
+Anak1 = live Adzra
+Anak2 = live Adel
+Anak3 = live Afzal
+```
+
+These labels are documentation aliases. The live My Cloud accounts and directories keep the real names.
 
 ```text
 Android phones
    │
-   └── Syncthing-Fork
+   └── Syncthing
           │
+          │ Send Only
           ▼
-   /data/Family/Photos/<member>
+   /data/Family/Photos/<live-member>
+          ▲
+          │ Receive Only
+          │
+   WD My Cloud Syncthing
 
                          ┌───────────────┐
 macOS/Windows ──────────>│ Samba         │
@@ -29,7 +46,7 @@ Browser/Finder ── HTTPS ─> drive.tripleatech.my.id
                      logical user roots
                               │
                               ▼
-                    /data/<member>
+                    /data/<live-member>
                          + /data/Family
 
 Smart TV access via DLNA remains a separate pending service.
@@ -37,55 +54,91 @@ Smart TV access via DLNA remains a separate pending service.
 
 ## Storage layout
 
+Repository-role representation:
+
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Ayah/
-│   │   ├── Ibu/
-│   │   ├── Anak1/
-│   │   ├── Anak2/
-│   │   └── Anak3/
+│   │   ├── Ayah/       # live: Abi
+│   │   ├── Ibu/        # live: Umi
+│   │   ├── Anak1/      # live: Adzra
+│   │   ├── Anak2/      # live: Adel
+│   │   └── Anak3/      # live: Afzal
 │   ├── Shared/
 │   └── Videos/
-├── Ayah/
-├── Ibu/
-├── Anak1/
-├── Anak2/
-└── Anak3/
+├── Ayah/              # live: Abi
+├── Ibu/               # live: Umi
+├── Anak1/             # live: Adzra
+├── Anak2/             # live: Adel
+└── Anak3/             # live: Afzal
 ```
 
 There is no `/data/Private/` directory in the final model.
 
 ## Permission model
 
-- Each member has a private root directly below `/data/`.
+- Each live member has a private root directly below `/data`.
 - The matching member has full read/write/delete access to that root.
 - Other family members have no access to another member's root.
 - New files and directories created inside a member root inherit the live-server member account ownership/permissions.
 - `/data/Family/Documents`, `/data/Family/Shared`, and `/data/Family/Videos` are writable by family WebDAV/Samba users.
 - `/data/Family/Photos` is read-only to family WebDAV/Samba users but writable by the `syncthing` service account for photo backup.
-- Phone photo folders use Send Only on the phone side.
+- Phone photo folders use **Send Only**.
+- MyCloud photo-destination folders use **Receive Only** after initial synchronization is verified.
+
+## Syncthing photo backup
+
+Syncthing is a one-way phone-to-NAS backup path:
+
+```text
+Phone photo folder
+      │
+      │ Send Only
+      ▼
+Syncthing cluster
+      │
+      │ Receive Only on MyCloud
+      ▼
+/data/Family/Photos/<live-member>
+      │
+      ├── Samba: read-only
+      └── WebDAV: read-only
+```
+
+Live member mapping:
+
+```text
+Ayah  → /data/Family/Photos/Abi
+Ibu   → /data/Family/Photos/Umi
+Anak1 → /data/Family/Photos/Adzra
+Anak2 → /data/Family/Photos/Adel
+Anak3 → /data/Family/Photos/Afzal
+```
+
+The first live phone is Poco F7 and its target is `/data/Family/Photos/Abi`.
+
+See `docs/syncthing.md` for the operational procedure.
 
 ## WebDAV logical roots
 
-Each WebDAV account gets two logical roots:
+Each WebDAV account gets access to its own private root plus the shared `Family` tree:
 
 ```text
 <member>
-├── private  → /data/<member>
+├── private  → live /data/<member>
 └── family   → /data/Family
 ```
 
-The five mappings are:
+Documentation-role mappings:
 
 ```text
-Ayah   → /data/Ayah
-Ibu    → /data/Ibu
-Anak1  → /data/Anak1
-Anak2  → /data/Anak2
-Anak3  → /data/Anak3
+Ayah  → live /data/Abi
+Ibu   → live /data/Umi
+Anak1 → live /data/Adzra
+Anak2 → live /data/Adel
+Anak3 → live /data/Afzal
 ```
 
 `private` is a WebDAV logical label only. There is no physical `/data/Private/` directory and no `/opt/webdav/` bind-mount layer in the final implementation.
@@ -117,4 +170,4 @@ The next WebDAV development step is to add a human-friendly HTML directory/file 
 
 Public traffic reaches only Cloudflare/Tunnel/WebDAV. SMB/TCP 445 and the Syncthing GUI remain LAN-only services.
 
-Credentials, Cloudflare tunnel credential files, and other secrets must never be committed to this repository.
+Credentials, Cloudflare tunnel credential files, API keys, and other secrets must never be committed to this repository.
