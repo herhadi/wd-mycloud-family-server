@@ -23,7 +23,7 @@ This repository documents and scripts a lightweight private family NAS built on 
 - Never assume `/dev/sda` is disposable.
 - Never run `mkfs`, `wipefs`, `mdadm --create`, partitioning, or destructive `dd` operations unless the task explicitly requires it and the target has been verified.
 - Do not format `/dev/sda4` during routine service setup.
-- Do not put credentials, private keys, device IDs, private certificates, photos, real family names, or documents in Git.
+- Do not put credentials, private keys, device IDs, private certificates, photos, or documents in Git.
 - Do not switch Debian Jessie sources to a newer Debian release.
 - Do not use `stable` in long-lived Jessie configuration; Jessie is legacy infrastructure and must use archived Jessie repositories when packages are required.
 - Prefer small, reversible changes with backups before configuration replacement.
@@ -50,9 +50,7 @@ Scripts must:
 
 ## Canonical family identity and storage layout
 
-Repository documentation uses generic member labels only. Do not record or infer the real family names, usernames, or other device-specific identities in documentation, examples, diagrams, or committed configuration.
-
-Use `<member-1>` through `<member-5>` for generic member placeholders.
+The canonical family member labels are **Ayah**, **Ibu**, **Anak1**, **Anak2**, and **Anak3**. Use these names consistently in current repository documentation, diagrams, storage paths, and configuration templates.
 
 The final storage model is:
 
@@ -61,18 +59,19 @@ The final storage model is:
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── <member-1>/
-│   │   ├── <member-2>/
-│   │   ├── <member-3>/
-│   │   ├── <member-4>/
-│   │   └── <member-5>/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   ├── Anak3/
+│   │   └── (no other member roots)
 │   ├── Shared/
 │   └── Videos/
-├── <member-1>/
-├── <member-2>/
-├── <member-3>/
-├── <member-4>/
-└── <member-5>/
+├── Ayah/
+├── Ibu/
+├── Anak1/
+├── Anak2/
+└── Anak3/
 ```
 
 There is no `/data/Private/` directory in the final model.
@@ -83,26 +82,43 @@ There is no `/data/Private/` directory in the final model.
 - The matching member has full read/write/delete access to that root.
 - Other family members have no access to another member's root.
 - New files and directories inside a member root must inherit the live-server member account ownership/permissions.
-- `/data/Family` is shared.
+- `/data/Family/Documents`, `/data/Family/Shared`, and `/data/Family/Videos` are writable by family users.
 - `/data/Family/Photos` is read-only to family users but writable by the `syncthing` service account for photo backup.
 - Android photo folders are configured as Send Only.
-- Other `Family` subdirectories may have purpose-specific permissions.
+- Other Family subdirectories may have purpose-specific permissions.
 
 ## WebDAV logical model
 
-Each WebDAV account gets access to its own private root plus the shared `Family` tree. `Private` may be used as a virtual WebDAV label only; it does not imply a physical `/data/Private` directory.
-
-The live server contains the real account-to-directory mappings. Repository documentation must use generic placeholders only:
+Each WebDAV account gets access to its own private root plus the shared `Family` tree:
 
 ```text
-<member-1> -> /data/<member-1>
-<member-2> -> /data/<member-2>
-<member-3> -> /data/<member-3>
-<member-4> -> /data/<member-4>
-<member-5> -> /data/<member-5>
+<member>
+├── private  → /data/<member>
+└── family   → /data/Family
 ```
 
-Implementation-specific bind mounts under `/opt/webdav/` must not be confused with the canonical `/data` layout.
+Canonical member mappings:
+
+```text
+Ayah   → /data/Ayah
+Ibu    → /data/Ibu
+Anak1  → /data/Anak1
+Anak2  → /data/Anak2
+Anak3  → /data/Anak3
+```
+
+`private` is a logical WebDAV label only; it does not imply a physical `/data/Private` directory.
+
+The production WebDAV permission model is:
+
+```yaml
+permissions: CRUD
+rules:
+  - regex: ^/family/Photos(/.*)?$
+    permissions: R
+```
+
+Implementation-specific bind mounts under `/opt/webdav/` were used by the legacy design and have been removed. They are not part of the canonical or production storage model.
 
 ## Validation
 
@@ -113,6 +129,8 @@ scripts/health-check.sh
 ```
 
 The checker verifies platform assumptions, `/data`, RAID, swap, Samba, `testparm`, and Syncthing without modifying the system.
+
+For WebDAV changes, also verify `webdav.service`, port 6065, private-user isolation, Family CRUD paths, and the read-only Family Photos rule.
 
 ## Recovery discipline
 
