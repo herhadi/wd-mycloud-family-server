@@ -13,22 +13,22 @@ Before service installation:
 - confirm 512 MB swap on `/dev/sda3`;
 - preserve existing service configuration before replacement;
 - do not perform a Debian distribution upgrade;
-- do not expose SMB/445 or the Syncthing GUI/8384 to the public Internet;
-- keep credentials, API keys, device secrets and family data outside Git.
+- do not expose SMB/445 or Syncthing GUI/8384 to the public Internet;
+- keep credentials, API keys, device secrets, family names, and family data outside Git.
 
-## Naming rule
+## Naming and portability
 
 Repository documentation uses generic family-role labels only:
 
 ```text
-Ayah  = live Abi
-Ibu   = live Umi
-Anak1 = live Adzra
-Anak2 = live Adel
-Anak3 = live Afzal
+Ayah
+Ibu
+Anak1
+Anak2
+Anak3
 ```
 
-These are documentation aliases. The live My Cloud accounts and directories retain the real names `Abi`, `Umi`, `Adzra`, `Adel`, and `Afzal`.
+These labels are aliases representing roles. They are not fixed personal names. A deployment may use any private family names or directory names locally. Private names must not be added to the public repository.
 
 ## Base system
 
@@ -36,35 +36,35 @@ The device runs Debian Jessie 8.2 on ARMv7l with kernel 3.2.68. The data partiti
 
 ## Storage layout
 
-The repository/documentation model is:
+The generic family model is:
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Ayah/       # live: Abi
-│   │   ├── Ibu/        # live: Umi
-│   │   ├── Anak1/      # live: Adzra
-│   │   ├── Anak2/      # live: Adel
-│   │   └── Anak3/      # live: Afzal
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
 │   ├── Shared/
 │   └── Videos/
-├── Ayah/              # live: Abi
-├── Ibu/               # live: Umi
-├── Anak1/             # live: Adzra
-├── Anak2/             # live: Adel
-└── Anak3/             # live: Afzal
+├── Ayah/
+├── Ibu/
+├── Anak1/
+├── Anak2/
+└── Anak3/
 ```
 
-There is no `/data/Private/` directory. The five live directories directly under `/data` are private roots for the corresponding family members.
+There is no `/data/Private/` directory in the final model.
 
 ## Permission model
 
 The private roots are isolated:
 
-- the owner has full read/write/delete access;
-- other family users have no access;
+- the matching member has full read/write/delete access;
+- other family users have no access to another member's root;
 - files and directories created inside a user's root must inherit that user's ownership/permissions.
 
 `/data/Family` is shared, with permissions determined by each subdirectory's purpose.
@@ -79,7 +79,7 @@ The private roots are isolated:
 
 Samba 4.2.14-Debian is installed and running. SMB is the primary local file interface for Finder/Explorer.
 
-The verified private-user model uses `[homes]` so an authenticated user opens the matching live private root directly. Family virtual folders are presented inside the private root through the verified filesystem bind mounts.
+The verified private-user model uses `[homes]` so an authenticated user opens the matching private root directly. Family virtual folders are presented according to the live Samba configuration.
 
 Do not expose SMB/TCP 445 directly to the Internet.
 
@@ -96,53 +96,22 @@ Android phone                 WD My Cloud
 Send Only  ────────────────>  Receive Only
                                   |
                                   v
-                         /data/Family/Photos/<live member>
+                         /data/Family/Photos/<member>
 ```
 
-The live paths are:
+The generic destinations are:
 
 ```text
-Ayah  → /data/Family/Photos/Abi
-Ibu   → /data/Family/Photos/Umi
-Anak1 → /data/Family/Photos/Adzra
-Anak2 → /data/Family/Photos/Adel
-Anak3 → /data/Family/Photos/Afzal
+/data/Family/Photos/Ayah
+/data/Family/Photos/Ibu
+/data/Family/Photos/Anak1
+/data/Family/Photos/Anak2
+/data/Family/Photos/Anak3
 ```
 
-The first configured phone is Poco F7 and its live target is `/data/Family/Photos/Abi`.
+The phone-side photo folder is configured as **Send Only**. The MyCloud destination is configured as **Receive Only** after initial synchronization is verified.
 
-### Android configuration
-
-On the phone:
-
-1. Add/edit the folder containing the photos.
-2. Select the real Android photo directory.
-3. Share it with the MyCloud device.
-4. Set the folder type to **Send Only**.
-5. Keep the original photos on the phone until the server copy has been verified.
-
-### MyCloud web-GUI configuration
-
-On the MyCloud Syncthing GUI at LAN TCP 8384:
-
-1. Accept/add the shared phone folder.
-2. Set the local path to the corresponding live `/data/Family/Photos/<member>` directory.
-3. Confirm the phone device is shared.
-4. Initialize the folder and verify `.stfolder` is created by Syncthing.
-5. After the initial transfer is confirmed, set the MyCloud folder type to **Receive Only**.
-
-The `syncthing` service account must be able to write to the receive directory. Do not create `.stfolder` manually.
-
-### Verification
-
-```bash
-find /data/Family/Photos/Abi -type f | wc -l
-du -sh /data/Family/Photos/Abi
-```
-
-The Syncthing GUI should report the folder as up to date after the transfer completes.
-
-For detailed phone and web-GUI instructions, recovery rules, and troubleshooting, see `docs/syncthing.md`.
+See `docs/syncthing.md` for the complete Android and MyCloud Web-GUI procedure.
 
 ## WebDAV
 
@@ -152,21 +121,11 @@ Each WebDAV account is logically presented with its own private root plus the sh
 
 ```text
 <member>
-├── private  → live /data/<member>
+├── private  → /data/<member>
 └── family   → /data/Family
 ```
 
-Documentation-role mappings:
-
-```text
-Ayah  → live /data/Abi
-Ibu   → live /data/Umi
-Anak1 → live /data/Adzra
-Anak2 → live /data/Adel
-Anak3 → live /data/Afzal
-```
-
-`private` is only a logical WebDAV label; there is no physical `/data/Private/` directory and no `/opt/webdav` bind-mount layer.
+`private` is only a logical WebDAV label; there is no physical `/data/Private/` directory and no `/opt/webdav` bind-mount layer in the final model.
 
 The global WebDAV permission is `CRUD`, except `/family/Photos` which is `R` through a path-specific rule.
 
@@ -186,4 +145,4 @@ Do not perform general distribution upgrades on this device.
 
 ## Documentation rule
 
-Use `Ayah`, `Ibu`, `Anak1`, `Anak2`, and `Anak3` in repository documentation as role aliases. Never infer that those aliases are the real live account/directory names. The live names remain `Abi`, `Umi`, `Adzra`, `Adel`, and `Afzal`.
+Use only the generic family-role aliases `Ayah`, `Ibu`, `Anak1`, `Anak2`, and `Anak3` in repository documentation, diagrams, examples, and templates. Never publish real family names or other personal identifiers. A different family may freely replace these aliases in its own private/local configuration.
