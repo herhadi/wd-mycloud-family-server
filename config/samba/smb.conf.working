@@ -1,6 +1,6 @@
 # Working Samba baseline captured from WD My Cloud Gen1.
 # Verified working from Mac/Finder on 2026-08-30.
-# Do not use this as the final private-user configuration.
+# This file is historical and must not be used as the final private-user configuration.
 
 [global]
    workgroup = WORKGROUP
@@ -17,3 +17,12 @@
    guest ok = no
    create mask = 0664
    directory mask = 0775
+
+# Planned share naming for the private-family configuration:
+# FamilyDocs
+# FamilyShared
+# FamilyVideos
+# FamilyPhotos (read-only to Samba users; Syncthing remains writable)
+#
+# Private user shares:
+# Abi, Umi, Adel, Adzra, Afzal
