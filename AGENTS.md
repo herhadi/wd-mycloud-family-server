@@ -29,6 +29,7 @@ This repository documents and scripts a lightweight private family NAS built on 
 - Prefer small, reversible changes with backups before configuration replacement.
 - Preserve the working boot/kernel configuration unless a documented recovery step is being performed.
 - Do not expose SMB/TCP 445 or the Syncthing GUI directly to the public Internet.
+- Do not run filesystem commands merely to make documentation match the repository; documentation changes must not alter the physical NAS.
 
 ## Script rules
 
@@ -38,7 +39,7 @@ Scripts must:
 - be non-destructive by default;
 - validate generated configuration before restarting services;
 - use `/data` for user data and avoid writing application state into the data filesystem unless explicitly intended;
-- avoid `systemd` assumptions because the target uses Debian Jessie/SysV-style service management.
+- avoid `systemd` assumptions for legacy SysV-managed services, except for the verified WebDAV and Cloudflare systemd units already present on the device.
 
 ## Current services
 
@@ -47,49 +48,66 @@ Scripts must:
 - WebDAV v5.15.0 static ARM binary
 - Cloudflare Tunnel via `cloudflared-mycloud.service`
 
-## Family identity and storage layout
+## Canonical family identity and storage layout
 
-The canonical family member names are:
+The canonical family member names are the real names used by this project:
 
-- `Ayah`
-- `Ibu`
-- `Anak1`
-- `Anak2`
-- `Anak3`
+- `Abi`
+- `Umi`
+- `Adel`
+- `Adzra`
+- `Afzal`
 
-The intended storage layout is:
+Do not replace these with generic labels such as `Ayah`, `Ibu`, `Anak1`, `Anak2`, or `Anak3`.
+
+The final storage layout is:
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Ayah/
-│   │   ├── Ibu/
-│   │   ├── Anak1/
-│   │   ├── Anak2/
-│   │   └── Anak3/
+│   │   ├── Abi/
+│   │   ├── Umi/
+│   │   ├── Adel/
+│   │   ├── Adzra/
+│   │   └── Afzal/
 │   ├── Shared/
 │   └── Videos/
-└── Private/
-    ├── Ayah/
-    ├── Ibu/
-    ├── Anak1/
-    ├── Anak2/
-    └── Anak3/
+├── Abi/
+├── Umi/
+├── Adel/
+├── Adzra/
+└── Afzal/
 ```
 
-The WebDAV virtual-root convention is:
+There is no `/data/Private/` directory in the final model.
+
+## Permission model
+
+- `/data/Abi`, `/data/Umi`, `/data/Adel`, `/data/Adzra`, and `/data/Afzal` are private roots.
+- Each private root is fully accessible by its owner and inaccessible to other family users.
+- New files/directories inside a user's root must inherit that user's ownership/permissions.
+- `/data/Family` is shared, but its subdirectories may have purpose-specific permissions.
+- `/data/Family/Photos` is read-only to family users but writable by the `syncthing` service account for photo backup.
+- Android photo folders are configured as Send Only.
+- `Family/Shared` may be read/write for family users when configured for collaboration.
+
+## WebDAV logical model
+
+Each WebDAV account gets access to its own private root plus the shared `Family` tree. `Private` may be used as a virtual WebDAV label only; it does not imply a physical `/data/Private` directory.
+
+The physical mapping is:
 
 ```text
-Ayah  -> /opt/webdav/ayah
-Ibu   -> /opt/webdav/ibu
-Anak1 -> /opt/webdav/anak1
-Anak2 -> /opt/webdav/anak2
-Anak3 -> /opt/webdav/anak3
+Abi   -> /data/Abi
+Umi   -> /data/Umi
+Adel  -> /data/Adel
+Adzra -> /data/Adzra
+Afzal -> /data/Afzal
 ```
 
-Each root exposes only `Private` and `Family`. The `Private` area maps to the matching member directory; the `Family` area maps to `/data/Family`.
+Implementation-specific bind mounts under `/opt/webdav/` must not be confused with the canonical `/data` layout.
 
 ## Validation
 
