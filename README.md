@@ -2,44 +2,89 @@
 
 Lightweight private family NAS/server for WD My Cloud Gen1 running Debian Jessie on ARMv7.
 
-## Verified baseline
+## Prerequisites — read before installation
 
-- Hardware: WD My Cloud Gen1
-- Architecture: ARMv7l / armhf
-- Debian: 8.2 (Jessie)
-- Kernel: 3.2.68
-- RAM: ~226 MB
-- Swap: 512 MB on `/dev/sda3`
-- Data disk: `/dev/sda4` mounted at `/data`
-- Storage: ~2.7 TB
-- Samba: 4.2.14-Debian
-- Syncthing: **v2.1.3**, static ARM binary
-- WebDAV: **v5.15.0**, static ARM binary
-- WebDAV listener: `0.0.0.0:6065`
-- Public WebDAV hostname: `drive.tripleatech.my.id`
-- Cloudflare Tunnel: `cloudflared-mycloud.service`
+This repository targets a specific legacy WD My Cloud Gen1 platform. **Read these prerequisites before running any installation or recovery command.**
+
+### Hardware and platform
+
+- WD My Cloud Gen1
+- ARMv7l / armhf
+- Debian 8.2 (Jessie)
+- Linux kernel 3.2.68
+- Approximately 226 MB RAM
+- 512 MB swap on `/dev/sda3`
+- Data disk `/dev/sda4` mounted at `/data`
+- Approximately 2.7 TB data storage
+
+### Required access
+
+- Working SSH/root access to the My Cloud
+- A known LAN IP address for the My Cloud
+- A Mac/Windows client for Samba/Finder verification
+- An Android phone for Syncthing photo-backup verification
+- LAN access to the Syncthing GUI on TCP 8384
+- Internet/DNS access only when configuring Cloudflare Tunnel/WebDAV remote access
+
+### Required baseline software
+
+The verified deployment uses:
+
+- Samba 4.2.14-Debian
+- Syncthing v2.1.3 static ARM binary
+- WebDAV v5.15.0 static ARM binary
+- WebDAV listener on `0.0.0.0:6065`
+- `cloudflared-mycloud.service`
+
+### Critical safety prerequisites
+
+- Verify `/dev/sda4` before any filesystem or partition operation.
+- Do not format `/dev/sda4` during routine setup.
+- Do not run distribution upgrades on Debian Jessie.
+- Jessie package sources must use the Debian archive, not a current Debian `stable` repository.
+- Do not expose SMB/TCP 445 or Syncthing GUI TCP 8384 directly to the public Internet.
+- Back up existing configuration before replacing it.
+- Never put passwords, API keys, Cloudflare credentials, SSH keys, private certificates, photos, or documents in Git.
+- Treat `dd`, `mkfs`, `wipefs`, partitioning, and RAID creation commands as destructive until the target has been verified.
+- On this ~226 MB RAM device, prefer lightweight native/static binaries and avoid Docker/heavy services.
+
+### Naming rule: documentation aliases vs live server names
+
+Repository documentation uses generic family-role labels so that the public documentation does not depend on real member names:
+
+| Repository/documentation label | Live server account/directory |
+|---|---|
+| Ayah | Abi |
+| Ibu | Umi |
+| Anak1 | Adzra |
+| Anak2 | Adel |
+| Anak3 | Afzal |
+
+**The names in the right-hand column are the real names used on the live My Cloud.** Do not rename the live accounts or directories to the documentation aliases merely to match this repository.
+
+When a repository example says `/data/Family/Photos/Ayah`, the corresponding live path is `/data/Family/Photos/Abi`.
 
 ## Family storage layout
 
-The canonical family storage model is:
+The repository/documentation model is:
 
 ```text
 /data/
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── Ayah/
-│   │   ├── Ibu/
-│   │   ├── Anak1/
-│   │   ├── Anak2/
-│   │   └── Anak3/
+│   │   ├── Ayah/       # live: Abi
+│   │   ├── Ibu/        # live: Umi
+│   │   ├── Anak1/      # live: Adzra
+│   │   ├── Anak2/      # live: Adel
+│   │   └── Anak3/      # live: Afzal
 │   ├── Shared/
 │   └── Videos/
-├── Ayah/
-├── Ibu/
-├── Anak1/
-├── Anak2/
-└── Anak3/
+├── Ayah/              # live: Abi
+├── Ibu/               # live: Umi
+├── Anak1/             # live: Adzra
+├── Anak2/             # live: Adel
+└── Anak3/             # live: Afzal
 ```
 
 There is **no `/data/Private/` directory** in the final storage model.
@@ -50,19 +95,19 @@ The family storage is separated into private user roots and purpose-specific sha
 
 ### Private user roots
 
-| Path | Member | Other family users |
+| Documentation role | Live path | Other family users |
 |---|---|---|
-| `/data/Ayah` | Ayah | no access |
-| `/data/Ibu` | Ibu | no access |
-| `/data/Anak1` | Anak1 | no access |
-| `/data/Anak2` | Anak2 | no access |
-| `/data/Anak3` | Anak3 | no access |
+| Ayah | `/data/Abi` | no access |
+| Ibu | `/data/Umi` | no access |
+| Anak1 | `/data/Adzra` | no access |
+| Anak2 | `/data/Adel` | no access |
+| Anak3 | `/data/Afzal` | no access |
 
 Private roots use filesystem permission mode `700`. Files and directories created inside a member's root are created under that member's account and ownership.
 
 ### Family shares
 
-| Share | Path | Family access |
+| Share | Live path | Family access |
 |---|---|---|
 | `FamilyDocs` | `/data/Family/Documents` | read/write |
 | `FamilyShared` | `/data/Family/Shared` | read/write |
@@ -72,7 +117,7 @@ Private roots use filesystem permission mode `700`. Files and directories create
 `/data/Family/Photos` is a special backup area:
 
 - family users through Samba/WebDAV: **read-only**;
-- Syncthing: **write** for photo backup;
+- Syncthing on MyCloud: **Receive Only**;
 - Android photo folders: **Send Only** into the corresponding member folder.
 
 ## Samba checkpoint
@@ -86,7 +131,9 @@ Verified from macOS/Finder after reloading Samba:
 - `FamilyDocs` is read/write;
 - `FamilyPhotos` is read-only;
 - the Samba service remains active after configuration reload;
-- the final share names are `FamilyDocs`, `FamilyShared`, `FamilyVideos`, and `FamilyPhotos`.
+- the final share model uses `[homes]` so login opens the matching private root directly;
+- Family folders are visible inside the private root through the verified bind mounts;
+- the final family share names remain `FamilyDocs`, `FamilyShared`, `FamilyVideos`, and `FamilyPhotos` where explicitly used by the deployment.
 
 The live server configuration is validated with `testparm` before activation. Credentials are never stored in the repository.
 
@@ -100,18 +147,18 @@ Each account sees two logical WebDAV roots:
 
 ```text
 <member>
-├── private  → /data/<member>
+├── private  → live /data/<member>
 └── family   → /data/Family
 ```
 
-The five member mappings are:
+The documentation-role mappings are:
 
 ```text
-Ayah   → /data/Ayah
-Ibu    → /data/Ibu
-Anak1  → /data/Anak1
-Anak2  → /data/Anak2
-Anak3  → /data/Anak3
+Ayah   → live /data/Abi
+Ibu    → live /data/Umi
+Anak1  → live /data/Adzra
+Anak2  → live /data/Adel
+Anak3  → live /data/Afzal
 ```
 
 The `private` WebDAV path is only a logical label. It does not require or imply a physical `/data/Private/` directory.
@@ -164,18 +211,44 @@ Verified:
 
 ## Syncthing
 
-Syncthing v2.1.3 backs up phone photos into the corresponding member directory under:
+Syncthing v2.1.3 is the phone-photo backup mechanism.
+
+The intended topology is:
 
 ```text
-/data/Family/Photos/
-├── Ayah/
-├── Ibu/
-├── Anak1/
-├── Anak2/
-└── Anak3/
+Android phone                     WD My Cloud
+-------------                     ----------
+Photo folder                      Family Photos member folder
+Send Only      ────────────────>  Receive Only
+                                  |
+                                  +-- Samba/WebDAV: read-only
 ```
 
-The photo source on each Android phone is configured as **Send Only**. WebDAV/Samba family users cannot delete files from the Family Photos area.
+The live member mappings are:
+
+```text
+Ayah   → /data/Family/Photos/Abi
+Ibu    → /data/Family/Photos/Umi
+Anak1  → /data/Family/Photos/Adzra
+Anak2  → /data/Family/Photos/Adel
+Anak3  → /data/Family/Photos/Afzal
+```
+
+For the first configured phone, Poco F7, the live server target is:
+
+```text
+Poco F7
+   ↓ Send Only
+/data/Family/Photos/Abi
+   ↑ Receive Only
+MyCloud
+```
+
+The Syncthing GUI is available on the LAN at TCP 8384. It must not be exposed directly to the public Internet.
+
+See [`docs/syncthing.md`](docs/syncthing.md) for the complete phone and MyCloud web-GUI procedure, including Send Only/Receive Only configuration, verification, permissions, and recovery.
+
+Syncthing folder status can be inspected through the GUI or REST API. The REST database status reports local/global file counts, bytes, files still needed, and sync state. citeturn0search0turn0search1
 
 ## Cloudflare Tunnel
 
@@ -226,7 +299,8 @@ The repository documents recovery of the Gen1 platform. The repository is config
 - Private user share isolation and Family share permissions are verified from Mac/Finder.
 - `FamilyPhotos` is read-only through Samba while remaining writable by Syncthing.
 - Final family storage model is deployed without `/data/Private/`.
-- Syncthing v2.1.3 starts at boot and backs up phone photos into the family photo area.
+- Syncthing v2.1.3 starts at boot.
+- Syncthing phone-to-MyCloud photo backup is configured for Poco F7 using the live target `/data/Family/Photos/Abi`; the current photo resync is being completed after the final path/permission correction.
 - Legacy WebDAV bind mounts and `/data/Private` development structure have been removed.
 - WebDAV v5.15.0 multi-directory mapping and path-specific read-only rules are verified.
 - Production `webdav.service` is enabled and running on TCP 6065.
@@ -234,11 +308,24 @@ The repository documents recovery of the Gen1 platform. The repository is config
 
 ### Next
 
+- Finish verification of the Poco F7 photo resync and then set the MyCloud Syncthing folder to Receive Only.
+- Add and verify remaining family Syncthing devices.
 - Re-test WebDAV/Finder/Cloudflare after future service changes.
 - Build and test a custom WebDAV v5.15.0-based binary with HTML directory listing for browser `GET` requests.
 - Remove Gossa only after the custom WebDAV browser UI is verified.
 - Select and verify a lightweight DLNA implementation suitable for Jessie and the 256 MB-class device.
-- Add and verify remaining family Syncthing devices.
+
+## Repository documents
+
+Key documents:
+
+- `AGENTS.md` — repository safety and operating rules.
+- `docs/setup.md` — base platform and service setup.
+- `docs/architecture.md` — system architecture and permission boundaries.
+- `docs/syncthing.md` — phone Send Only and MyCloud Receive Only procedure.
+- `docs/deployment/syncthing-verified.md` — verified Syncthing deployment/runtime notes.
+- `docs/deployment/webdav-cloudflare-verified.md` — verified WebDAV/Cloudflare deployment.
+- `docs/recovery/` — destructive recovery procedures; read completely before disk-writing steps.
 
 ## Source of truth
 
