@@ -2,7 +2,7 @@
 
 The NAS is intentionally lightweight because WD My Cloud Gen1 has limited memory.
 
-Repository documentation uses generic family labels only. Real family names, usernames, and device-specific identities are configured on the live server and must not be recorded here.
+The canonical family labels are **Ayah**, **Ibu**, **Anak1**, **Anak2**, and **Anak3**.
 
 ```text
 Android phones
@@ -10,7 +10,7 @@ Android phones
    └── Syncthing-Fork
           │
           ▼
-   /data/Family/Photos/<member-N>
+   /data/Family/Photos/<member>
 
                          ┌───────────────┐
 macOS/Windows ──────────>│ Samba         │
@@ -26,10 +26,10 @@ Browser/Finder ── HTTPS ─> drive.tripleatech.my.id
                          WebDAV :6065
                               │
                               ▼
-                      virtual user roots
+                     logical user roots
                               │
                               ▼
-                    /data/<member-N>
+                    /data/<member>
                          + /data/Family
 
 Smart TV access via DLNA remains a separate pending service.
@@ -42,21 +42,21 @@ Smart TV access via DLNA remains a separate pending service.
 ├── Family/
 │   ├── Documents/
 │   ├── Photos/
-│   │   ├── <member-1>/
-│   │   ├── <member-2>/
-│   │   ├── <member-3>/
-│   │   ├── <member-4>/
-│   │   └── <member-5>/
+│   │   ├── Ayah/
+│   │   ├── Ibu/
+│   │   ├── Anak1/
+│   │   ├── Anak2/
+│   │   └── Anak3/
 │   ├── Shared/
 │   └── Videos/
-├── <member-1>/
-├── <member-2>/
-├── <member-3>/
-├── <member-4>/
-└── <member-5>/
+├── Ayah/
+├── Ibu/
+├── Anak1/
+├── Anak2/
+└── Anak3/
 ```
 
-There is no `/data/Private/` directory in the final storage model.
+There is no `/data/Private/` directory in the final model.
 
 ## Permission model
 
@@ -64,28 +64,45 @@ There is no `/data/Private/` directory in the final storage model.
 - The matching member has full read/write/delete access to that root.
 - Other family members have no access to another member's root.
 - New files and directories created inside a member root inherit the live-server member account ownership/permissions.
-- `Family/` is shared.
-- `Family/Photos/` is read-only to family users through the file-sharing/WebDAV layer, while Syncthing is allowed to write photo backups.
+- `/data/Family/Documents`, `/data/Family/Shared`, and `/data/Family/Videos` are writable by family WebDAV/Samba users.
+- `/data/Family/Photos` is read-only to family WebDAV/Samba users but writable by the `syncthing` service account for photo backup.
 - Phone photo folders use Send Only on the phone side.
 
-## WebDAV virtual roots
+## WebDAV logical roots
 
-Each WebDAV account is confined to its own logical root containing `Private` and `Family` views. These are virtual labels only; `Private` does not represent a physical `/data/Private/` directory.
+Each WebDAV account gets two logical roots:
 
 ```text
-<member-1> -> /opt/webdav/<login-1>
-<member-2> -> /opt/webdav/<login-2>
-<member-3> -> /opt/webdav/<login-3>
-<member-4> -> /opt/webdav/<login-4>
-<member-5> -> /opt/webdav/<login-5>
+<member>
+├── private  → /data/<member>
+└── family   → /data/Family
 ```
 
-The live server maps each login to its matching `/data/<member-N>` root plus `/data/Family`. Real login names are intentionally excluded from this repository.
+The five mappings are:
+
+```text
+Ayah   → /data/Ayah
+Ibu    → /data/Ibu
+Anak1  → /data/Anak1
+Anak2  → /data/Anak2
+Anak3  → /data/Anak3
+```
+
+`private` is a WebDAV logical label only. There is no physical `/data/Private/` directory and no `/opt/webdav/` bind-mount layer in the final implementation.
+
+The WebDAV global permission is `CRUD`, with the following path rule:
+
+```yaml
+permissions: CRUD
+rules:
+  - regex: ^/family/Photos(/.*)?$
+    permissions: R
+```
 
 ## Service roles
 
 - **Samba** — primary LAN filesystem interface for Finder/Explorer.
-- **Syncthing** — phone photo backup into user-specific directories under `/data/Family/Photos/`.
+- **Syncthing** — phone photo backup into member-specific directories under `/data/Family/Photos/`.
 - **WebDAV** — authenticated remote filesystem interface on TCP 6065.
 - **Cloudflare Tunnel** — publishes the WebDAV service through `drive.tripleatech.my.id` without exposing SMB/445.
 - **DLNA** — not yet promoted; must be selected only after compatibility and memory testing.
@@ -100,4 +117,4 @@ The next WebDAV development step is to add a human-friendly HTML directory/file 
 
 Public traffic reaches only Cloudflare/Tunnel/WebDAV. SMB/TCP 445 and the Syncthing GUI remain LAN-only services.
 
-Credentials, real family identities, and Cloudflare tunnel credential files are never committed to this repository.
+Credentials, Cloudflare tunnel credential files, and other secrets must never be committed to this repository.
