@@ -195,13 +195,23 @@ The UI hides common macOS/Syncthing internal files and displays basic file-type 
 
 The gateway has been verified on both x86_64 Ubuntu and the ARMv7 My Cloud. The ARMv7 binary starts successfully as a systemd service and returns the expected HTML page after WebDAV authentication.
 
-Cloudflare should be switched to the gateway only after the gateway has been fully verified locally. Do not expose TCP 6066 directly to the Internet.
+Cloudflare routes the public hostname to the gateway. Do not expose TCP 6066 directly to the Internet.
 
 ## Browser and Finder behavior
 
 A standards-compliant WebDAV `PROPFIND` request may return `207 Multi-Status` XML. Raw XML in a browser is therefore normal when accessing WebDAV directly.
 
 Through the Browser Gateway, an ordinary browser `GET` of a directory receives a human-friendly HTML listing. Finder and other WebDAV clients continue to use the underlying WebDAV protocol.
+
+## Release checkpoints
+
+Stable/verified deployment checkpoints are maintained as GitHub releases/tags. The release notes record the physical-device verification state and known issues at each checkpoint.
+
+Current checkpoint:
+
+- **v1.1.0** — Browser Gateway enabled, ARMv7 service verified, Cloudflare routed to gateway, with WebDAV `PROPFIND` filtering for Windows remaining as a known issue.
+
+See [`docs/releases/v1.1.0.md`](docs/releases/v1.1.0.md).
 
 ## Recovery and safety
 
@@ -236,13 +246,14 @@ This repository is configuration/documentation source-of-truth, not a backup of 
 - Browser Gateway binary runs natively on ARMv7.
 - `webdav-gw.service` is enabled and running.
 - Browser Gateway authentication and HTML directory rendering are verified locally on TCP 6066.
+- Cloudflare ingress configuration validates successfully with the WD-specific command syntax.
 
 ### Next
 
 - Finish verification of the current phone photo synchronization and confirm the MyCloud destination is Receive Only.
 - Add and verify remaining family Syncthing devices.
 - Re-test WebDAV/Finder/Cloudflare after future service changes.
-- Switch the Cloudflare Tunnel upstream from WebDAV `6065` to Browser Gateway `6066` after final local gateway checks.
+- Filter internal files from WebDAV `PROPFIND` responses so Windows WebDAV does not display Syncthing/macOS internal entries.
 - Select and verify a lightweight DLNA implementation suitable for Jessie and the 256 MB-class device.
 
 ## Repository documents
@@ -254,6 +265,7 @@ This repository is configuration/documentation source-of-truth, not a backup of 
 - `docs/deployment/syncthing-verified.md` — verified Syncthing runtime notes.
 - `docs/deployment/webdav-cloudflare-verified.md` — verified WebDAV/Cloudflare deployment.
 - `docs/browser-gateway.md` — Browser Gateway design, deployment and verification.
+- `docs/releases/v1.1.0.md` — v1.1.0 release checkpoint and known issue.
 - `docs/recovery/` — destructive recovery procedures; read completely before disk-writing steps.
 
 ## Source of truth
@@ -262,6 +274,7 @@ After every verified workflow on the physical My Cloud:
 
 1. update the relevant repository documentation/configuration;
 2. commit it to `main`;
-3. only then start the next workflow.
+3. create/update the corresponding release checkpoint when the state is stable;
+4. only then start the next workflow.
 
 The repository is configuration/documentation source-of-truth, not a backup of `/data`.
