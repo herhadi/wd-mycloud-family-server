@@ -41,11 +41,12 @@ Browser/Finder ── HTTPS ─> drive.tripleatech.my.id
                          WebDAV :6065
                               │
                               ▼
-                     logical user roots
+                     /data/<member>
                               │
-                              ▼
-                    /data/<member>
-                         + /data/Family
+                              ├── FamilyDocs
+                              ├── FamilyPhotos
+                              ├── FamilyShared
+                              └── FamilyVideos
 
 Smart TV access via DLNA remains a separate pending service.
 ```
@@ -84,6 +85,17 @@ There is no `/data/Private/` directory in the final model.
 - Phone photo folders use **Send Only**.
 - MyCloud photo-destination folders use **Receive Only** after initial synchronization is verified.
 
+The shared directories are presented inside each private root through filesystem bind mounts:
+
+```text
+/data/Family/Documents → /data/<member>/FamilyDocs
+/data/Family/Photos    → /data/<member>/FamilyPhotos
+/data/Family/Shared    → /data/<member>/FamilyShared
+/data/Family/Videos    → /data/<member>/FamilyVideos
+```
+
+This allows Samba and WebDAV to expose the same user-facing tree without giving clients a separate `Family` virtual root.
+
 ## Syncthing photo backup
 
 Syncthing is a one-way phone-to-NAS backup path:
@@ -115,32 +127,38 @@ Anak3 → /data/Family/Photos/Anak3
 
 See `docs/syncthing.md` for the operational procedure.
 
-## WebDAV logical roots
+## WebDAV root model
 
-Each WebDAV account gets access to its own private root plus the shared `Family` tree:
+Each WebDAV account uses its matching private directory directly as the WebDAV root:
 
 ```text
-<member>
-├── private  → /data/<member>
-└── family   → /data/Family
+<member> WebDAV root
+├── FamilyDocs     → bind mount to /data/Family/Documents
+├── FamilyPhotos   → bind mount to /data/Family/Photos
+├── FamilyShared   → bind mount to /data/Family/Shared
+├── FamilyVideos   → bind mount to /data/Family/Videos
+├── private files
+└── private folders
 ```
 
-The `private` label is logical only. It does not imply a physical `/data/Private/` directory and there is no `/opt/webdav/` bind-mount layer in the final implementation.
+There are no `private/` or `family/` virtual WebDAV directories in the final implementation. There is also no `/opt/webdav/` bind-mount layer.
 
-The WebDAV global permission is `CRUD`, with the following path rule:
+The WebDAV configuration uses a single `directory: /data/<member>` entry per account. The global permission is `CRUD`, with the Family Photos path restricted to `R`:
 
 ```yaml
 permissions: CRUD
 rules:
-  - regex: ^/family/Photos(/.*)?$
+  - regex: ^/FamilyPhotos(/.*)?$
     permissions: R
 ```
+
+Production passwords are stored outside the repository in `/etc/webdav/webdav.env` and loaded by systemd with `EnvironmentFile`. The YAML uses `{env}...` references instead of plaintext or committed password hashes.
 
 ## Service roles
 
 - **Samba** — primary LAN filesystem interface for Finder/Explorer.
 - **Syncthing** — phone photo backup into member-specific directories under `/data/Family/Photos/`.
-- **WebDAV** — authenticated remote filesystem interface on TCP 6065.
+- **WebDAV** — authenticated remote filesystem interface on TCP 6065, rooted at `/data/<member>` per account.
 - **Cloudflare Tunnel** — publishes the WebDAV service without exposing SMB/445.
 - **DLNA** — not yet promoted; must be selected only after compatibility and memory testing.
 
@@ -154,4 +172,4 @@ The next WebDAV development step is to add a human-friendly HTML directory/file 
 
 Public traffic reaches only Cloudflare/Tunnel/WebDAV. SMB/TCP 445 and the Syncthing GUI remain LAN-only services.
 
-Credentials, Cloudflare tunnel credential files, API keys, private certificates, and family personal data must never be committed to this repository.
+Credentials, WebDAV environment files, Cloudflare tunnel credential files, API keys, private certificates, and family personal data must never be committed to this repository.
