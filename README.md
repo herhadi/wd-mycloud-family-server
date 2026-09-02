@@ -75,7 +75,7 @@ OK
 
 ## Release checkpoints
 
-Verified deployment checkpoints are maintained as GitHub tags/releases. The current checkpoint is **v1.1.0**.
+Verified deployment checkpoints are maintained as GitHub release/tag checkpoints. The current checkpoint is **v1.1.0**.
 
 ### v1.1.0 — Browser Gateway checkpoint
 
