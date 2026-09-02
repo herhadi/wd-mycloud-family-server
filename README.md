@@ -205,7 +205,7 @@ Through the Browser Gateway, an ordinary browser `GET` of a directory receives a
 
 ## Release checkpoints
 
-Stable/verified deployment checkpoints are maintained as GitHub releases/tags. The release notes record the physical-device verification state and known issues at each checkpoint.
+Stable/verified deployment checkpoints are maintained as GitHub release/tag checkpoints. The release notes record the physical-device verification state and known issues at each checkpoint.
 
 Current checkpoint:
 
