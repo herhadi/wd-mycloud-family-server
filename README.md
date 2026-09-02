@@ -53,6 +53,9 @@ This repository targets a specific legacy WD My Cloud Gen1 platform. Read this s
 - Syncthing: **v2.1.3**, static ARM binary
 - WebDAV: **v5.15.0**, static ARM binary
 - WebDAV listener: `0.0.0.0:6065`
+- Browser Gateway: **webdav-gw**, static ARMv7 binary
+- Browser Gateway listener: `127.0.0.1:6066`
+- Browser Gateway service: `webdav-gw.service`, enabled and running
 - Cloudflare Tunnel: `cloudflared-mycloud.service`
 
 ## Family storage layout
@@ -165,13 +168,40 @@ users:
     directory: /data/<member>
 ```
 
-Remote access uses the Cloudflare Tunnel. SMB and Syncthing GUI remain LAN-only.
+Remote access uses the Browser Gateway behind the Cloudflare Tunnel. SMB and Syncthing GUI remain LAN-only.
+
+## Browser Gateway
+
+The custom `webdav-gw` service provides a human-friendly HTML directory listing for ordinary browser `GET` requests while preserving WebDAV behavior for other clients and methods.
+
+```text
+Browser / WebDAV client
+          |
+          v
+Browser Gateway :6066
+          |
+          v
+WebDAV :6065
+          |
+          v
+/data/<member>
+```
+
+The gateway is a lightweight static ARMv7 binary installed at `/usr/local/bin/webdav-gw` and managed by `webdav-gw.service`. It listens only on `127.0.0.1:6066`.
+
+For browser `GET` requests to directories, the gateway authenticates through WebDAV, performs an authenticated `PROPFIND`, parses the XML response, and renders an HTML listing. Non-GET WebDAV methods and file requests are passed through to the WebDAV service.
+
+The UI hides common macOS/Syncthing internal files and displays basic file-type icons, directory-first sorting, breadcrumbs, Home/Back controls, and file sizes. This filtering affects only the browser presentation; it does not delete or modify files.
+
+The gateway has been verified on both x86_64 Ubuntu and the ARMv7 My Cloud. The ARMv7 binary starts successfully as a systemd service and returns the expected HTML page after WebDAV authentication.
+
+Cloudflare should be switched to the gateway only after the gateway has been fully verified locally. Do not expose TCP 6066 directly to the Internet.
 
 ## Browser and Finder behavior
 
-A standards-compliant WebDAV `PROPFIND` request may return `207 Multi-Status` XML. Raw XML in a browser is therefore normal WebDAV behavior.
+A standards-compliant WebDAV `PROPFIND` request may return `207 Multi-Status` XML. Raw XML in a browser is therefore normal when accessing WebDAV directly.
 
-The next WebDAV development goal is a human-friendly HTML directory/file listing for ordinary browser `GET` requests while preserving WebDAV semantics for Finder and other clients.
+Through the Browser Gateway, an ordinary browser `GET` of a directory receives a human-friendly HTML listing. Finder and other WebDAV clients continue to use the underlying WebDAV protocol.
 
 ## Recovery and safety
 
@@ -182,6 +212,7 @@ This repository is configuration/documentation source-of-truth, not a backup of 
 - Preserve existing configuration before replacement.
 - Treat disk-writing commands as destructive until the target has been verified.
 - Do not expose SMB/TCP 445 or Syncthing GUI TCP 8384 publicly.
+- Keep the Browser Gateway bound to `127.0.0.1`; do not expose TCP 6066 directly.
 - Test service changes locally before testing through Cloudflare.
 - Keep `/etc/webdav/webdav.env` and other credential files out of Git.
 
@@ -202,13 +233,16 @@ This repository is configuration/documentation source-of-truth, not a backup of 
 - WebDAV authentication works with passwords supplied through `EnvironmentFile`.
 - WebDAV `FamilyPhotos` write attempts return `403 Forbidden`.
 - WebDAV `FamilyShared` write test returned `201 Created` and the test file was removed.
+- Browser Gateway binary runs natively on ARMv7.
+- `webdav-gw.service` is enabled and running.
+- Browser Gateway authentication and HTML directory rendering are verified locally on TCP 6066.
 
 ### Next
 
 - Finish verification of the current phone photo synchronization and confirm the MyCloud destination is Receive Only.
 - Add and verify remaining family Syncthing devices.
 - Re-test WebDAV/Finder/Cloudflare after future service changes.
-- Build and test a custom WebDAV binary with HTML directory listing for browser `GET` requests.
+- Switch the Cloudflare Tunnel upstream from WebDAV `6065` to Browser Gateway `6066` after final local gateway checks.
 - Select and verify a lightweight DLNA implementation suitable for Jessie and the 256 MB-class device.
 
 ## Repository documents
@@ -219,6 +253,7 @@ This repository is configuration/documentation source-of-truth, not a backup of 
 - `docs/syncthing.md` — phone Send Only and MyCloud Receive Only procedure.
 - `docs/deployment/syncthing-verified.md` — verified Syncthing runtime notes.
 - `docs/deployment/webdav-cloudflare-verified.md` — verified WebDAV/Cloudflare deployment.
+- `docs/browser-gateway.md` — Browser Gateway design, deployment and verification.
 - `docs/recovery/` — destructive recovery procedures; read completely before disk-writing steps.
 
 ## Source of truth
