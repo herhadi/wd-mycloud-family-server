@@ -15,6 +15,18 @@ Lightweight private family NAS/server for WD My Cloud Gen1 running Debian Jessie
 - `webdav-gw.service` enabled and running
 - Cloudflare Tunnel `cloudflared-mycloud.service`
 
+## Upstream projects
+
+This repository contains the deployment configuration, documentation, and custom gateway for the system. The main open-source components used by the deployment are:
+
+- **Samba** — SMB/CIFS file sharing: https://github.com/samba-team/samba
+- **Syncthing** — file synchronization: https://github.com/syncthing/syncthing
+- **WebDAV** — WebDAV server: https://github.com/hacdias/webdav
+- **cloudflared** — Cloudflare Tunnel client: https://github.com/cloudflare/cloudflared
+- **Browser Gateway** — custom lightweight Go gateway maintained in this repository under `gateway/`
+
+The exact versions verified on the physical WD are documented above and in the deployment documents. Upstream projects are not vendored into this repository unless explicitly noted.
+
 ## Family storage layout
 
 ```text
