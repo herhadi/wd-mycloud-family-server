@@ -18,7 +18,7 @@ Listen  : 0.0.0.0:6065
 
 The binary is a static ARM executable from the `github.com/hacdias/webdav/v5` project family.
 
-The production configuration contains credentials and remains on the WD. Do not commit `/etc/webdav/config.yml` or real passwords to Git.
+The production configuration contains credentials and remains on the WD. Do not commit `/etc/webdav/config.yml`, `/etc/webdav/webdav.env`, or real passwords to Git.
 
 ## Final filesystem model
 
@@ -47,14 +47,18 @@ There is no `/data/Private/` directory and no `/opt/webdav/` bind-mount layer in
 
 The five roots outside `Family` are private user areas. The matching account has full access; other family users have no access.
 
-## WebDAV logical mapping
+## WebDAV direct-root mapping
 
-Each account receives two logical roots:
+Each account uses its private root directly as the WebDAV root. Shared Family directories are exposed inside that root through filesystem bind mounts:
 
 ```text
-<member>
-├── private  → /data/<member>
-└── family   → /data/Family
+<member> WebDAV root
+├── FamilyDocs     → /data/Family/Documents
+├── FamilyPhotos   → /data/Family/Photos
+├── FamilyShared   → /data/Family/Shared
+├── FamilyVideos   → /data/Family/Videos
+├── private files/folders
+└── ...
 ```
 
 Canonical member mappings:
@@ -67,7 +71,32 @@ Anak2  → /data/Anak2
 Anak3  → /data/Anak3
 ```
 
-`private` is only a WebDAV logical label. It does not correspond to a physical `/data/Private` directory.
+There are no `private/` or `family/` virtual directories in the final WebDAV view. The user-facing structure therefore matches the Samba `[homes]` share.
+
+## WebDAV configuration model
+
+The production configuration uses one direct `directory` per account rather than the multi-directory virtual-root feature:
+
+```yaml
+users:
+  - username: <member>
+    password: "{env}WD_<MEMBER>_PASSWORD"
+    directory: /data/<member>
+```
+
+Production passwords are stored outside Git in:
+
+```text
+/etc/webdav/webdav.env
+```
+
+The systemd service loads them with:
+
+```ini
+EnvironmentFile=/etc/webdav/webdav.env
+```
+
+The environment file must remain root-readable only (mode `600`). Do not publish its contents.
 
 ## WebDAV permission model
 
@@ -77,35 +106,38 @@ The production configuration uses a global `CRUD` permission with one path-speci
 permissions: CRUD
 
 rules:
-  - regex: ^/family/Photos(/.*)?$
+  - regex: ^/FamilyPhotos(/.*)?$
     permissions: R
 ```
 
 Therefore:
 
 ```text
-/private/              CRUD, matching member only
-/family/Documents/     CRUD
-/family/Shared/        CRUD
-/family/Videos/        CRUD
-/family/Photos/        R only
+/FamilyDocs/       CRUD
+/FamilyShared/     CRUD
+/FamilyVideos/     CRUD
+/FamilyPhotos/     R only
 ```
+
+The `FamilyPhotos` rule protects the phone-backup area from normal family-client writes/deletes while allowing Syncthing to write new photos at the filesystem level.
 
 ## Verification checkpoint
 
-**Checkpoint: WebDAV production service — verified 2026-09-01.**
+**Checkpoint: WebDAV direct-root production deployment — verified 2026-09-02.**
 
 The configuration was tested on port `6066` before activation and then tested through `webdav.service` on port `6065`.
 
 Verified:
 
-- upload to `/family/Photos/` returns `403 Forbidden`;
-- upload to `/family/Documents/` returns `201 Created`;
-- all five private roots accept uploads for their matching account;
-- cross-user private access returns `404 Not Found`;
-- deletion from a writable Family document returns `204 No Content`;
+- Basic Authentication succeeds using the environment-backed password;
+- root `PROPFIND` returns `207 Multi-Status`;
+- the root exposes `FamilyDocs`, `FamilyPhotos`, `FamilyShared`, and `FamilyVideos` directly;
+- there are no `private/` or `family/` virtual directories;
+- write to `/FamilyPhotos/` returns `403 Forbidden`;
+- write to `/FamilyShared/` returns `201 Created`;
+- the WebDAV write-test file was removed after verification;
 - `webdav.service` is `active (running)` and `enabled`;
-- port `6065` listens after reboot.
+- port `6065` is listening.
 
 ## Legacy cleanup checkpoint
 
