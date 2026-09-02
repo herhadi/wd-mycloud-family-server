@@ -59,6 +59,15 @@ The generic family model is:
 
 There is no `/data/Private/` directory in the final model.
 
+The four shared Family directories are bind-mounted into every matching private root:
+
+```text
+Family/Documents → <member>/FamilyDocs
+Family/Photos    → <member>/FamilyPhotos
+Family/Shared    → <member>/FamilyShared
+Family/Videos    → <member>/FamilyVideos
+```
+
 ## Permission model
 
 The private roots are isolated:
@@ -79,7 +88,7 @@ The private roots are isolated:
 
 Samba 4.2.14-Debian is installed and running. SMB is the primary local file interface for Finder/Explorer.
 
-The verified private-user model uses `[homes]` so an authenticated user opens the matching private root directly. Family virtual folders are presented according to the live Samba configuration.
+The verified private-user model uses `[homes]` so an authenticated user opens the matching private root directly. The Family folders appear inside that root through the filesystem bind mounts.
 
 Do not expose SMB/TCP 445 directly to the Internet.
 
@@ -117,19 +126,65 @@ See `docs/syncthing.md` for the complete Android and MyCloud Web-GUI procedure.
 
 WebDAV v5.15.0 is installed as `/usr/local/bin/webdav` and listens on TCP 6065 through `webdav.service`.
 
-Each WebDAV account is logically presented with its own private root plus the shared `Family` tree:
+Each WebDAV account uses its matching `/data/<member>` directory as the **direct WebDAV root**. There are no `private/` or `family/` virtual directories.
+
+The user-facing structure is therefore the same as the Samba home share:
 
 ```text
-<member>
-├── private  → /data/<member>
-└── family   → /data/Family
+<member> WebDAV root
+├── FamilyDocs
+├── FamilyPhotos
+├── FamilyShared
+├── FamilyVideos
+├── private files/folders
+└── ...
 ```
 
-`private` is only a logical WebDAV label; there is no physical `/data/Private/` directory and no `/opt/webdav` bind-mount layer in the final model.
+The global WebDAV permission is `CRUD`, except `/FamilyPhotos` which is `R` through a path-specific rule:
 
-The global WebDAV permission is `CRUD`, except `/family/Photos` which is `R` through a path-specific rule.
+```yaml
+permissions: CRUD
+rules:
+  - regex: ^/FamilyPhotos(/.*)?$
+    permissions: R
+```
 
-The public hostname is `drive.tripleatech.my.id`, published through the Cloudflare Tunnel service `cloudflared-mycloud.service`.
+### WebDAV credentials
+
+Production passwords are kept outside the repository in:
+
+```text
+/etc/webdav/webdav.env
+```
+
+The file should be owned by `root:root` with mode `600` and contain one password variable per deployment member. Example with placeholders only:
+
+```text
+WD_AYAH_PASSWORD=<private-password>
+WD_IBU_PASSWORD=<private-password>
+WD_ANAK1_PASSWORD=<private-password>
+WD_ANAK2_PASSWORD=<private-password>
+WD_ANAK3_PASSWORD=<private-password>
+```
+
+The systemd unit loads the file with:
+
+```ini
+EnvironmentFile=/etc/webdav/webdav.env
+```
+
+The WebDAV YAML references environment variables rather than storing passwords directly:
+
+```yaml
+users:
+  - username: ayah
+    password: "{env}WD_AYAH_PASSWORD"
+    directory: /data/Ayah
+```
+
+Use the actual local usernames and directory names only on the private WD. Do not commit `/etc/webdav/webdav.env` or production `config.yml` to Git.
+
+The WebDAV service should be restarted only after validating the configuration locally.
 
 ## Remote access
 
