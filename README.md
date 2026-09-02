@@ -276,5 +276,3 @@ After every verified workflow on the physical My Cloud:
 2. commit it to `main`;
 3. create/update the corresponding release checkpoint when the state is stable;
 4. only then start the next workflow.
-
-The repository is configuration/documentation source-of-truth, not a backup of `/data`.
