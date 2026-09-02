@@ -113,6 +113,8 @@ See [`docs/syncthing.md`](docs/syncthing.md) for the complete Web-GUI procedure,
 
 Samba is the primary LAN filesystem interface for Finder/Explorer. Family Photos is read-only through normal family file access.
 
+The verified `[homes]` configuration maps an authenticated username directly to `/data/<user>`, so Finder presents the user's private root as the home share. Family folders are exposed inside that root through filesystem bind mounts.
+
 Validate configuration with:
 
 ```bash
@@ -123,15 +125,44 @@ Do not expose TCP 445 to the Internet.
 
 ## WebDAV
 
-WebDAV v5.15.0 runs through `webdav.service` on TCP 6065. Each authenticated account gets a logical private area plus the shared Family tree.
+WebDAV v5.15.0 runs through `webdav.service` on TCP 6065. Each authenticated account uses its own `/data/<user>` directory as the **direct WebDAV root**.
+
+The user therefore sees the same logical structure as Samba:
+
+```text
+<member> WebDAV root
+├── FamilyDocs
+├── FamilyPhotos
+├── FamilyShared
+├── FamilyVideos
+├── private files/folders
+└── ...
+```
+
+There are no `private/` or `family/` virtual WebDAV directories in the final configuration. The shared Family folders are made visible inside each private root by filesystem bind mounts.
 
 The global permission is `CRUD`, with Family Photos restricted to `R`:
 
 ```yaml
 permissions: CRUD
 rules:
-  - regex: ^/family/Photos(/.*)?$
+  - regex: ^/FamilyPhotos(/.*)?$
     permissions: R
+```
+
+Production credentials are kept outside Git in `/etc/webdav/webdav.env`. The systemd service loads that file with:
+
+```ini
+EnvironmentFile=/etc/webdav/webdav.env
+```
+
+The YAML references environment variables rather than storing passwords directly:
+
+```yaml
+users:
+  - username: <member>
+    password: "{env}WD_<MEMBER>_PASSWORD"
+    directory: /data/<member>
 ```
 
 Remote access uses the Cloudflare Tunnel. SMB and Syncthing GUI remain LAN-only.
@@ -152,6 +183,7 @@ This repository is configuration/documentation source-of-truth, not a backup of 
 - Treat disk-writing commands as destructive until the target has been verified.
 - Do not expose SMB/TCP 445 or Syncthing GUI TCP 8384 publicly.
 - Test service changes locally before testing through Cloudflare.
+- Keep `/etc/webdav/webdav.env` and other credential files out of Git.
 
 ## Status
 
@@ -166,7 +198,10 @@ This repository is configuration/documentation source-of-truth, not a backup of 
 - Final family storage model is deployed without `/data/Private/`.
 - Syncthing v2.1.3 starts at boot.
 - WebDAV v5.15.0 is enabled and running on TCP 6065.
-- WebDAV private isolation and Family CRUD/read-only behavior are verified.
+- WebDAV uses direct per-user roots and no `private/` or `family/` virtual directories.
+- WebDAV authentication works with passwords supplied through `EnvironmentFile`.
+- WebDAV `FamilyPhotos` write attempts return `403 Forbidden`.
+- WebDAV `FamilyShared` write test returned `201 Created` and the test file was removed.
 
 ### Next
 
