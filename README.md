@@ -17,15 +17,15 @@ Lightweight private family NAS/server for WD My Cloud Gen1 running Debian Jessie
 
 ## Upstream projects
 
-This repository contains the deployment configuration, documentation, and custom gateway for the system. The main open-source components used by the deployment are:
+This repository contains deployment documentation/configuration, scripts, and a custom Browser Gateway. The main open-source components used by the deployment are:
 
-- **Samba** — SMB/CIFS file sharing: https://github.com/samba-team/samba
-- **Syncthing** — file synchronization: https://github.com/syncthing/syncthing
-- **WebDAV** — WebDAV server: https://github.com/hacdias/webdav
-- **cloudflared** — Cloudflare Tunnel client: https://github.com/cloudflare/cloudflared
+- **Samba** — SMB/CIFS file sharing
+- **Syncthing** — file synchronization
+- **WebDAV** — WebDAV server
+- **cloudflared** — Cloudflare Tunnel client
 - **Browser Gateway** — custom lightweight Go gateway maintained in this repository under `gateway/`
 
-The exact versions verified on the physical WD are documented above and in the deployment documents. Upstream projects are not vendored into this repository unless explicitly noted.
+Upstream projects are not vendored into this repository unless explicitly noted. Their own licenses apply to their respective software.
 
 ## Family storage layout
 
@@ -50,9 +50,20 @@ The exact versions verified on the physical WD are documented above and in the d
 
 There is no `/data/Private/` directory in the final storage model.
 
+## Access and permission model
+
+The same underlying storage is exposed through different protocols:
+
+- **Samba:** normal read/write/delete access according to filesystem permissions.
+- **WebDAV:** CRUD for private roots, `FamilyDocs`, `FamilyShared`, and `FamilyVideos`.
+- **WebDAV `FamilyPhotos`:** read-only. Syncthing writes photo backups to this destination; family users do not modify it through WebDAV.
+- **Browser Gateway:** browser-friendly directory browsing over the same WebDAV roots.
+
+Samba permissions are independent of the WebDAV `FamilyPhotos` read-only rule.
+
 ## WebDAV and Browser Gateway
 
-Each authenticated account uses `/data/<member>` directly as its WebDAV root. Family directories are exposed inside that root through filesystem bind mounts.
+Each authenticated account uses `/data/<member>` directly as its WebDAV root. Family directories appear inside that root through filesystem bind mounts.
 
 ```text
 Browser / WebDAV client
@@ -64,7 +75,7 @@ WebDAV :6065
 /data/<member>
 ```
 
-The gateway renders ordinary browser directory `GET` requests as HTML and passes WebDAV methods and file requests through to WebDAV. It hides common macOS/Syncthing internal files from the HTML presentation.
+The gateway renders ordinary browser directory `GET` requests as HTML, passes WebDAV methods and file requests through, and filters common internal entries from `PROPFIND` directory responses.
 
 The gateway is installed as `/usr/local/bin/webdav-gw` and managed by `webdav-gw.service`. It listens only on localhost and must not be exposed directly.
 
@@ -87,20 +98,22 @@ OK
 
 ## Release checkpoints
 
-Verified deployment checkpoints are maintained as GitHub release/tag checkpoints. The current checkpoint is **v1.1.0**.
+Verified deployment checkpoints are maintained as GitHub release/tag checkpoints. The current verified code checkpoint is **v1.1.1**.
 
-### v1.1.0 — Browser Gateway checkpoint
+### v1.1.1 — Browser Gateway PROPFIND checkpoint
 
 Verified on the physical WD:
 
 - Browser Gateway ARMv7 binary runs natively.
 - `webdav-gw.service` is enabled and running.
-- Local Basic Authentication and HTML directory rendering work.
-- Cloudflare ingress validates successfully and routes to the gateway.
+- Browser directory rendering works through the gateway.
+- WebDAV `PROPFIND` directory responses filter common internal entries while preserving normal entries.
+- `FamilyPhotos` remains read-only through WebDAV.
+- Samba remains independent from the WebDAV `FamilyPhotos` rule.
+- The production ARMv7 binary and the build-machine binary have identical SHA-256 hashes.
+- Cloudflare ingress routes the public hostname to the gateway.
 
-Known issue carried into v1.1.1: WebDAV `PROPFIND` responses are not yet filtered, so Windows WebDAV can display internal entries such as `.stfolder`, `.temp`, `.mace_*`, and `.trashed-*`. This is presentation-only; files are not deleted or modified.
-
-See `docs/releases/v1.1.0.md`.
+See `CHANGELOG.md` and `docs/releases/` for checkpoint history.
 
 ## Safety
 
@@ -111,14 +124,23 @@ See `docs/releases/v1.1.0.md`.
 - Test locally before changing Cloudflare routing.
 - Treat destructive disk commands as dangerous until the target has been verified.
 
+## License
+
+Original material in this repository is released under the **MIT License**. See `LICENSE`.
+
+Third-party software remains subject to its respective upstream license.
+
 ## Repository documents
 
 - `AGENTS.md` — repository safety and operating rules.
+- `CONTRIBUTING.md` — contribution and change guidelines.
+- `SECURITY.md` — security policy and vulnerability reporting.
+- `CHANGELOG.md` — release history.
 - `docs/setup.md` — base platform and service setup.
 - `docs/architecture.md` — system architecture and permission boundaries.
 - `docs/syncthing.md` — phone Send Only and MyCloud Receive Only procedure.
 - `docs/deployment/syncthing-verified.md` — verified Syncthing runtime notes.
 - `docs/deployment/webdav-cloudflare-verified.md` — verified WebDAV/Cloudflare deployment.
 - `docs/browser-gateway.md` — Browser Gateway design, deployment and verification.
-- `docs/releases/v1.1.0.md` — v1.1.0 release checkpoint and known issue.
+- `docs/releases/v1.1.0.md` — v1.1.0 release checkpoint.
 - `docs/recovery/` — destructive recovery procedures.
