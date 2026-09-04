@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/xml"
 	"html/template"
 	"io"
@@ -121,6 +122,11 @@ func main() {
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "PROPFIND" {
+			filterPropfind(w, r, proxy)
+			return
+		}
+
 		if r.Method != http.MethodGet {
 			proxy.ServeHTTP(w, r)
 			return
@@ -359,4 +365,88 @@ func renderDirectory(w http.ResponseWriter, currentPath string, entries []Entry)
 	if err := pageTemplate.Execute(w, data); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
+}
+
+func filterPropfind(w http.ResponseWriter, r *http.Request, proxy *httputil.ReverseProxy) {
+	orig := proxy.Director
+	req := r.Clone(r.Context())
+	orig(req)
+
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		http.Error(w, "WebDAV error", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "WebDAV read error", http.StatusBadGateway)
+		return
+	}
+
+	if resp.StatusCode == http.StatusMultiStatus {
+		body = filterPropfindXML(body)
+	}
+
+	for k, values := range resp.Header {
+		for _, v := range values {
+			w.Header().Add(k, v)
+		}
+	}
+
+	w.WriteHeader(resp.StatusCode)
+	_, _ = w.Write(body)
+}
+
+func filterPropfindXML(body []byte) []byte {
+	var out bytes.Buffer
+	pos := 0
+
+	for {
+		start := bytes.Index(body[pos:], []byte("<D:response"))
+		if start < 0 {
+			out.Write(body[pos:])
+			break
+		}
+		start += pos
+
+		out.Write(body[pos:start])
+
+		end := bytes.Index(body[start:], []byte("</D:response>"))
+		if end < 0 {
+			out.Write(body[start:])
+			break
+		}
+		end += start + len("</D:response>")
+
+		block := body[start:end]
+
+		if !isHiddenPropfindResponse(block) {
+			out.Write(block)
+		}
+
+		pos = end
+	}
+
+	return out.Bytes()
+}
+
+func isHiddenPropfindResponse(block []byte) bool {
+	start := bytes.Index(block, []byte("<D:href>"))
+	if start < 0 {
+		return false
+	}
+
+	start += len("<D:href>")
+	end := bytes.Index(block[start:], []byte("</D:href>"))
+	if end < 0 {
+		return false
+	}
+
+	href := strings.ToLower(string(block[start : start+end]))
+
+	name := path.Base(strings.TrimSuffix(href, "/"))
+
+	return isHiddenUIFile(name)
 }

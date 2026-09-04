@@ -32,3 +32,8 @@ Thumbs.db
 *.iso
 *.tgz
 *.tar.gz
+
+# Local Gateway build artifacts
+gateway/webdav-gw
+gateway/webdav-gw-test
+gateway/main.go.v1.1.0
