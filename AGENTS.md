@@ -32,6 +32,7 @@ A deploying family may replace the generic aliases with its own private names in
 - Syncthing v2.1.3 static ARM binary
 - WebDAV v5.15.0 static ARM binary
 - WebDAV listener on TCP 6065
+- Browser Gateway `webdav-gw` on TCP 6066, bound to localhost
 - Cloudflare Tunnel via `cloudflared-mycloud.service`
 
 ## Safety rules
@@ -54,13 +55,14 @@ Scripts must:
 - be non-destructive by default;
 - validate generated configuration before restarting services;
 - use `/data` for user data and avoid writing application state into the data filesystem unless explicitly intended;
-- avoid `systemd` assumptions for legacy SysV-managed services, except for the verified WebDAV and Cloudflare systemd units already present on the device.
+- avoid `systemd` assumptions for legacy SysV-managed services, except for the verified WebDAV, Browser Gateway, and Cloudflare systemd units already present on the device.
 
 ## Current services
 
 - Samba 4.2.14-Debian
 - Syncthing v2.1.3 static ARM binary
 - WebDAV v5.15.0 static ARM binary
+- Browser Gateway `webdav-gw` static ARMv7 binary
 - Cloudflare Tunnel via `cloudflared-mycloud.service`
 
 ## Canonical storage layout
@@ -97,6 +99,13 @@ There is no `/data/Private/` directory in the final model.
 - Android photo folders are configured as **Send Only**.
 - MyCloud photo-destination folders are configured as **Receive Only** after initial synchronization is verified.
 
+The protocol boundary is intentional:
+
+- Samba provides normal CRUD according to filesystem permissions.
+- WebDAV provides CRUD for private roots, `FamilyDocs`, `FamilyShared`, and `FamilyVideos`.
+- WebDAV `FamilyPhotos` is read-only.
+- The WebDAV `FamilyPhotos` rule must not restrict Samba CRUD.
+
 ## Syncthing photo-backup model
 
 ```text
@@ -109,31 +118,48 @@ Syncthing
 MyCloud /data/Family/Photos/<member>
    │ Receive Only
    ▼
-Samba/WebDAV read-only FamilyPhotos
+FamilyPhotos
 ```
 
 See `docs/syncthing.md` before changing Syncthing configuration. Do not reset the global Syncthing database for a folder problem without first checking the folder path, `.stfolder`, mount state, permissions, and source-phone data.
 
 ## WebDAV logical model
 
-Each WebDAV account gets access to its own private root plus the shared `Family` tree:
+Each authenticated WebDAV account uses its own `/data/<member>` directory directly as the WebDAV root. Family directories are exposed inside that root through filesystem bind mounts:
 
 ```text
 <member>
-├── private  → /data/<member>
-└── family   → /data/Family
+├── FamilyDocs
+├── FamilyPhotos
+├── FamilyShared
+├── FamilyVideos
+├── private files/folders
+└── ...
 ```
 
-The production WebDAV permission model is:
+Production WebDAV permissions are:
 
 ```yaml
 permissions: CRUD
 rules:
-  - regex: ^/family/Photos(/.*)?$
+  - regex: ^/FamilyPhotos(/.*)?$
     permissions: R
 ```
 
-Implementation-specific bind mounts under `/opt/webdav/` were used by the legacy design and have been removed. They are not part of the canonical or production storage model.
+The read-only rule applies to WebDAV requests only. Samba uses the underlying filesystem permissions independently.
+
+Implementation-specific bind mounts under `/opt/webdav/` used by the legacy design have been removed. They are not part of the canonical or production storage model.
+
+## Browser Gateway
+
+The Browser Gateway is a thin reverse proxy/interceptor in `gateway/`.
+
+- Browser directory `GET` requests are rendered as HTML.
+- WebDAV methods are passed through to the WebDAV service, with `PROPFIND`
+  responses filtered to hide common internal entries.
+- File requests are passed through unchanged.
+- The gateway listens on `127.0.0.1:6066` and must not be exposed directly.
+- Cloudflare is the intended public ingress for browser access.
 
 ## Validation
 
@@ -146,6 +172,8 @@ scripts/health-check.sh
 The checker verifies platform assumptions, `/data`, RAID, swap, Samba, `testparm`, and Syncthing without modifying the system.
 
 For WebDAV changes, also verify `webdav.service`, port 6065, private-user isolation, Family CRUD paths, and the read-only Family Photos rule.
+
+For Browser Gateway changes, run the Go tests and verify the binary on the physical ARMv7 target before creating a release checkpoint.
 
 ## Recovery discipline
 
