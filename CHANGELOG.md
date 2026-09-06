@@ -12,6 +12,7 @@ All notable changes to this project are documented here.
 
 - Browser Gateway filtering for hidden/internal entries in WebDAV `PROPFIND`
   directory responses.
+- Release checkpoint documentation in `docs/releases/v1.1.1.md`.
 
 ### Verified
 
@@ -19,13 +20,14 @@ All notable changes to this project are documented here.
 - Browser directory rendering works through the gateway.
 - WebDAV remains functional for normal file operations.
 - `FamilyPhotos` remains read-only through WebDAV.
-- Samba remains independent from the WebDAV read-only rule.
+- Samba remains independent from the WebDAV read-only rule and retains normal CRUD behavior.
 - Production and build-machine gateway binaries have matching SHA-256 hashes.
+- Cloudflare ingress routes the public hostname to the Browser Gateway.
 
 ### Compatibility note
 
 The gateway intentionally filters presentation-level `PROPFIND` entries while
-preserving the underlying WebDAV response structure as much as possible. The
+preserving the underlying WebDAV response bytes as much as possible. The
 verified deployment uses the WebDAV server documented in the repository.
 
 ## [1.1.0] - 2026-09-02
