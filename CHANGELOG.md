@@ -6,7 +6,7 @@ All notable changes to this project are documented here.
 
 - No unreleased changes.
 
-## [1.1.1] - 2026-09-04
+## [1.1.1] - 2026-09-07
 
 ### Added
 
@@ -21,14 +21,14 @@ All notable changes to this project are documented here.
 - WebDAV remains functional for normal file operations.
 - `FamilyPhotos` remains read-only through WebDAV.
 - Samba remains independent from the WebDAV read-only rule and retains normal CRUD behavior.
-- Production and build-machine gateway binaries have matching SHA-256 hashes.
+- The deployed `/usr/local/bin/webdav-gw` binary was copied to the build workstation and verified to have the same SHA-256 before packaging the release asset.
 - Cloudflare ingress routes the public hostname to the Browser Gateway.
 
 ### Compatibility note
 
 The gateway intentionally filters presentation-level `PROPFIND` entries while
-preserving the underlying WebDAV response bytes as much as possible. The
-verified deployment uses the WebDAV server documented in the repository.
+preserving normal WebDAV behavior. The verified deployment uses the WebDAV
+server documented in the repository.
 
 ## [1.1.0] - 2026-09-02
 
