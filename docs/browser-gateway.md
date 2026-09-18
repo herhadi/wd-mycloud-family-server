@@ -87,6 +87,38 @@ http://127.0.0.1:6066/
 
 Verify authentication, root listing, folder navigation, file links, Home, Back, file-type icons and internal-file filtering before any production deployment.
 
+
+## Operations
+
+### Automated smoke test
+
+The repository includes a non-destructive Browser Gateway smoke test:
+
+    BASE_URL=http://127.0.0.1:6066/ ./scripts/test-gateway.sh
+
+If authentication is required, credentials are supplied at runtime through the shell environment; they are never stored in the repository.
+
+The smoke test performs only GET and PROPFIND requests. It does not upload, delete, rename, create directories, or modify user data.
+
+Run the Go unit tests with:
+
+    cd gateway
+    go test ./...
+
+### Safe production upgrade
+
+Use the repository helper on the WD My Cloud:
+
+    scripts/webdav-gw-upgrade.sh /path/to/webdav-gw
+
+The helper backs up the current /usr/local/bin/webdav-gw outside /data, records SHA-256 values, installs the incoming binary through a temporary file, restarts webdav-gw.service, and verifies that the service is active. If the post-upgrade service check fails, it restores the previous binary and attempts to restart the service.
+
+Manual rollback is available:
+
+    scripts/webdav-gw-rollback.sh /usr/local/lib/webdav-gw/backups/webdav-gw.<timestamp>
+
+The upgrade and rollback helpers do not operate on /data and contain no credentials or production configuration.
+
 ## Deployment boundary
 
 Do not expose SMB/TCP 445 or Syncthing GUI TCP 8384 through the public tunnel.
