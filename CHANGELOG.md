@@ -4,7 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
-- No unreleased changes.
+### Added
+
+- Safe Browser Gateway upgrade helper with automatic rollback when the service fails to restart or remain active after replacement.
+- Explicit Browser Gateway rollback helper for a selected backup binary.
+- Non-destructive Browser Gateway integration smoke test using only GET and PROPFIND requests.
+- Expanded automated PROPFIND filtering tests for Syncthing and macOS metadata patterns.
 
 ## [1.1.1] - 2026-09-07
 
